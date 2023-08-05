@@ -1,0 +1,17 @@
+# Ignore build artifacts
+tmp
+bin
+build
+dist
+
+# Ignore documentation files
+README.md
+LICENSE
+
+# Ignore package files since they are managed by package managers.
+package.json
+pnpm-lock.yaml
+
+# Cache folders
+
+# Test results

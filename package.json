@@ -1,8 +1,0 @@
-{
-  "name": "@fensak/gofun",
-  "displayName": "gofun",
-  "version": "1.0.0",
-  "description": "Javascript based PR approve rules engine for GOFensak.",
-  "author": "IllumiTacit, LLC",
-  "license": "Apache-2.0"
-}

@@ -1,23 +1,29 @@
 import { assertEquals, assertThrows } from "../test_deps.ts";
 
-import { runRule } from "./interpreter.ts";
+import { PatchOp, runRule } from "./interpreter.ts";
 
 Deno.test("sanity check", () => {
   const ruleFn = `function main(inp) {
-  return inp === "hello world";
+  return inp.length === 1;
 }
 `;
-  const result = runRule(ruleFn, "hello world");
+  const result = runRule(ruleFn, [{
+    path: "foo.txt",
+    op: PatchOp.Insert,
+    originalFull: "",
+    updatedFull: "hello worlld",
+    diff: [],
+  }]);
   assertEquals(result, true);
 });
 
 Deno.test("main return must be boolean", () => {
   const ruleFn = `function main(inp) {
-  return inp + "world";
+  return "hello world";
 }
 `;
   assertThrows(
-    () => runRule(ruleFn, "hello "),
+    () => runRule(ruleFn, []),
     Error,
     "main function must return boolean",
   );
@@ -31,13 +37,20 @@ Deno.test("XMLHTTPRequest not supported", () => {
       setOutput("false");
     }
   });
-  req.open("GET", inp);
+  req.open("GET", inp[0].updatedFull);
   req.send();
   return true;
 }`;
 
   assertThrows(
-    () => runRule(ruleFn, "http://example.com/example.txt"),
+    () =>
+      runRule(ruleFn, [{
+        path: "foo.txt",
+        op: PatchOp.Insert,
+        originalFull: "",
+        updatedFull: "http://example.com/example.txt",
+        diff: [],
+      }]),
     Error,
     "XMLHttpRequest is not defined",
   );
@@ -45,14 +58,21 @@ Deno.test("XMLHTTPRequest not supported", () => {
 
 Deno.test("fetch is not supported", () => {
   const ruleFn = `function main(inp) {
-  fetch(inp).then(function(response) {
+  fetch(inp[0].updatedFull).then(function(response) {
     setOutput("false");
   });
   return true
 }`;
 
   assertThrows(
-    () => runRule(ruleFn, "http://example.com/example.txt"),
+    () =>
+      runRule(ruleFn, [{
+        path: "foo.txt",
+        op: PatchOp.Insert,
+        originalFull: "",
+        updatedFull: "http://example.com/example.txt",
+        diff: [],
+      }]),
     Error,
     "fetch is not defined",
   );
@@ -65,7 +85,14 @@ Deno.test("process is not supported", () => {
 }`;
 
   assertThrows(
-    () => runRule(ruleFn, "http://example.com/example.txt"),
+    () =>
+      runRule(ruleFn, [{
+        path: "foo.txt",
+        op: PatchOp.Insert,
+        originalFull: "",
+        updatedFull: "hello worlld",
+        diff: [],
+      }]),
     Error,
     "process is not defined",
   );
@@ -78,7 +105,14 @@ Deno.test("Deno is not supported", () => {
 }`;
 
   assertThrows(
-    () => runRule(ruleFn, "http://example.com/example.txt"),
+    () =>
+      runRule(ruleFn, [{
+        path: "foo.txt",
+        op: PatchOp.Insert,
+        originalFull: "",
+        updatedFull: "hello worlld",
+        diff: [],
+      }]),
     Error,
     "Deno is not defined",
   );

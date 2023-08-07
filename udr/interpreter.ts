@@ -1,4 +1,4 @@
-import { Interpreter } from "./deps.ts";
+import { Interpreter } from "../deps.ts";
 
 // deno-lint-ignore no-explicit-any
 function setupConsole(interpreter: any, scope: any) {
@@ -17,11 +17,23 @@ function setupConsole(interpreter: any, scope: any) {
   interpreter.setProperty(scope, "log", nativeLogFunc);
 }
 
-// TODO: add support for es6 with babel
-// TODO: add support for typescript with babel
-// TODO: define patch type
-// deno-lint-ignore no-explicit-any
-export function runRule(ruleFn: string, patch: any): boolean {
+/**
+ * Execute the given user defined rule function in JavaScript (EcmaScript 5) against the given patch object.
+ *
+ * TODO: add support for es6 with babel
+ * TODO: add support for typescript with babel
+ * TODO: define patch type
+ *
+ * @param ruleFn A string containing the definition of a main function that takes in the patch object and returns a bool
+ *               indicating if the patch passes the rule (and thus should allow auto-merge).
+ * @param patch A patch object to evaluate the rule against.
+ * @returns A boolean indicating whether the given patch passes the user defined rule.
+ */
+export function runRule(
+  ruleFn: string,
+  // deno-lint-ignore no-explicit-any
+  patch: any,
+): boolean {
   const code = `${ruleFn}
 var inp = JSON.parse(getInput());
 var out = main(inp);

@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "./test_deps.ts";
+import { assertEquals, assertThrows } from "../test_deps.ts";
 
 import { runRule } from "./interpreter.ts";
 

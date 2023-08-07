@@ -1,0 +1,40 @@
+name: lint-test
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  # Run linter and tests against JS, TS, and YAML files
+  linttest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+
+      - uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31 # v1.1.2
+        with:
+          deno-version: v1.36.0
+
+      - name: fmt
+        run: deno fmt --check
+
+      - name: lint
+        run: deno lint
+
+      - name: test
+        run: deno test --reporter=junit --junit-path=./report.xml
+
+      - name: report
+        uses: mikepenz/action-junit-report@7210fead7f92f6395c37241964df3b0f730f5e4e # v3.7.1
+        if: always()
+        with:
+          report_paths: "report.xml"
+          check_name: "deno test report"

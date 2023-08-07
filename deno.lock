@@ -32,6 +32,7 @@
     "https://deno.land/std@0.197.0/testing/asserts.ts": "b4e4b1359393aeff09e853e27901a982c685cb630df30426ed75496961931946",
     "https://raw.githubusercontent.com/NeilFraser/JS-Interpreter/10a8cf5e613834b5d36655c1921f818455fc324a/interpreter.js": "4ce4cea31e913c8be29aea19c737849e87264637e26ca663c9a2ed9480178ed9",
     "https://raw.githubusercontent.com/yorinasub17/JS-Interpreter-deno/v0.0.1/int.ts": "3d1d1134180110156c6966b55b13c7fed3f69f5ad044af3479c8693cbb1703bf",
+    "https://raw.githubusercontent.com/yorinasub17/JS-Interpreter-deno/v0.0.1/mod.ts": "3d1d1134180110156c6966b55b13c7fed3f69f5ad044af3479c8693cbb1703bf",
     "https://raw.githubusercontent.com/yorinasub17/JS-Interpreter/compat-10a8cf5/acorn.js": "29f93c412e99c8d833a9f5a44e523b4b2c6bce510e142a896587671348b14646"
   }
 }

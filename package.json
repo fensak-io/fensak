@@ -1,8 +1,8 @@
 {
-  "name": "@fensak/gofun",
-  "displayName": "gofun",
+  "name": "@fensak/fgorun",
+  "displayName": "fgorun",
   "version": "1.0.0",
-  "description": "Javascript based PR approve rules engine for GOFensak.",
+  "description": "Javascript based PR approve rules engine for Fensak GO.",
   "author": "IllumiTacit, LLC",
   "license": "Apache-2.0",
   "type": "module",

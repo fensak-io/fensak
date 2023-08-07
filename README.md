@@ -1,3 +1,3 @@
-# gofun
+# fgorun
 
-`gofun` is a Javascript function runner for Javascript to power the PR approve rules engine for GOFensak.
+`fgorun` is a Javascript function runner for Javascript to power the PR approve rules engine for Fensak GO.

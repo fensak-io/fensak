@@ -77,6 +77,12 @@ export interface IPatch {
   diff: IHunk[];
 }
 
+// Max time in milliseconds for the user defined rule to run. Any UDR functions that take longer than this will throw an error.
+const maxUDRRuntime = 5000;
+// Sleep every 100 steps to yield to other tasks.
+const maxStepIterationsBeforeSleep = 100;
+const sleepBetweenStepIterations = 100;
+
 // deno-lint-ignore no-explicit-any
 function setupConsole(interpreter: any, scope: any) {
   const nativeConsole = interpreter.createObjectProto(interpreter.OBJECT_PROTO);
@@ -108,7 +114,7 @@ function setupConsole(interpreter: any, scope: any) {
 export function runRule(
   ruleFn: string,
   patchList: IPatch[],
-): boolean {
+): Promise<boolean> {
   const code = `${ruleFn}
 var inp = JSON.parse(getInput());
 var out = main(inp);
@@ -144,6 +150,40 @@ setOutput(JSON.stringify(out));
       );
     },
   );
-  interpreter.run();
-  return output;
+  const outputPromise = new Promise<boolean>((resolve, reject) => {
+    (async () => {
+      let rejected = false;
+      let sleeping: number | null = null;
+      const tout = setTimeout(() => {
+        if (sleeping) {
+          clearTimeout(sleeping);
+        }
+        rejected = true;
+        reject(new Error("user defined rule timed out"));
+      }, maxUDRRuntime);
+
+      let iterations = 0;
+      try {
+        while (interpreter.step()) {
+          if (rejected) {
+            return;
+          }
+          iterations++;
+          // Every max step iterations, sleep to yield to other threads and then reset the counter
+          if (iterations > maxStepIterationsBeforeSleep) {
+            await new Promise((resolve) =>
+              sleeping = setTimeout(resolve, sleepBetweenStepIterations)
+            );
+            iterations = 0;
+          }
+        }
+        resolve(output);
+      } catch (e) {
+        reject(e);
+      } finally {
+        clearTimeout(tout);
+      }
+    })();
+  });
+  return outputPromise;
 }

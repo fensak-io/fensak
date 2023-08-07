@@ -1,13 +1,13 @@
-import { assertEquals, assertThrows } from "../test_deps.ts";
+import { assertEquals, assertRejects } from "../test_deps.ts";
 
 import { PatchOp, runRule } from "./interpreter.ts";
 
-Deno.test("sanity check", () => {
+Deno.test("sanity check", async () => {
   const ruleFn = `function main(inp) {
   return inp.length === 1;
 }
 `;
-  const result = runRule(ruleFn, [{
+  const result = await runRule(ruleFn, [{
     path: "foo.txt",
     op: PatchOp.Insert,
     originalFull: "",
@@ -17,19 +17,32 @@ Deno.test("sanity check", () => {
   assertEquals(result, true);
 });
 
-Deno.test("main return must be boolean", () => {
+Deno.test("main return must be boolean", async () => {
   const ruleFn = `function main(inp) {
   return "hello world";
 }
 `;
-  assertThrows(
+  await assertRejects(
     () => runRule(ruleFn, []),
     Error,
     "main function must return boolean",
   );
 });
 
-Deno.test("XMLHTTPRequest not supported", () => {
+Deno.test("infinite loop", async () => {
+  const ruleFn = `function main(inp) {
+  while (true) {}
+  return "hello world";
+}
+`;
+  await assertRejects(
+    () => runRule(ruleFn, []),
+    Error,
+    "user defined rule timed out",
+  );
+});
+
+Deno.test("XMLHTTPRequest not supported", async () => {
   const ruleFn = `function main(inp) {
   var req = new XMLHttpRequest();
   req.addEventListener("readystatechange", function() {
@@ -42,7 +55,7 @@ Deno.test("XMLHTTPRequest not supported", () => {
   return true;
 }`;
 
-  assertThrows(
+  await assertRejects(
     () =>
       runRule(ruleFn, [{
         path: "foo.txt",
@@ -56,7 +69,7 @@ Deno.test("XMLHTTPRequest not supported", () => {
   );
 });
 
-Deno.test("fetch is not supported", () => {
+Deno.test("fetch is not supported", async () => {
   const ruleFn = `function main(inp) {
   fetch(inp[0].updatedFull).then(function(response) {
     setOutput("false");
@@ -64,7 +77,7 @@ Deno.test("fetch is not supported", () => {
   return true
 }`;
 
-  assertThrows(
+  await assertRejects(
     () =>
       runRule(ruleFn, [{
         path: "foo.txt",
@@ -78,13 +91,13 @@ Deno.test("fetch is not supported", () => {
   );
 });
 
-Deno.test("process is not supported", () => {
+Deno.test("process is not supported", async () => {
   const ruleFn = `function main(inp) {
   console.log(process.env)
   return true
 }`;
 
-  assertThrows(
+  await assertRejects(
     () =>
       runRule(ruleFn, [{
         path: "foo.txt",
@@ -98,13 +111,13 @@ Deno.test("process is not supported", () => {
   );
 });
 
-Deno.test("Deno is not supported", () => {
+Deno.test("Deno is not supported", async () => {
   const ruleFn = `function main(inp) {
   console.log(Deno.env)
   return true
 }`;
 
-  assertThrows(
+  await assertRejects(
     () =>
       runRule(ruleFn, [{
         path: "foo.txt",

@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "../test_deps.ts";
 
-import { PatchOp } from "../patch/mod.ts";
-import { runRule } from "./interpreter.ts";
+import { PatchOp, SourcePlatform } from "../patch/mod.ts";
+import { RuleLogLevel, RuleLogMode, runRule } from "./interpreter.ts";
 
 Deno.test("sanity check", async () => {
   const ruleFn = `function main(inp) {
@@ -16,7 +16,96 @@ Deno.test("sanity check", async () => {
     deletions: 0,
     diff: [],
   }]);
-  assertEquals(result, true);
+  assertEquals(result.approve, true);
+});
+
+Deno.test("basic logging", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello world",
+  }]);
+});
+
+Deno.test("logging with multiple objects", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello", "world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello world",
+  }]);
+});
+
+Deno.test("logging order", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello");
+  console.log("world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello",
+  }, {
+    level: RuleLogLevel.Info,
+    msg: "world",
+  }]);
+});
+
+Deno.test("logging warn level", async () => {
+  const ruleFn = `function main(inp) {
+  console.warn("hello");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Warn,
+    msg: "hello",
+  }]);
+});
+
+Deno.test("logging error level", async () => {
+  const ruleFn = `function main(inp) {
+  console.error("hello");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Error,
+    msg: "hello",
+  }]);
 });
 
 Deno.test("main return must be boolean", async () => {

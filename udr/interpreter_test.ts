@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "../test_deps.ts";
 
-import { PatchOp, SourcePlatform } from "../patch/mod.ts";
+import { PatchOp } from "../patch/mod.ts";
 import { RuleLogLevel, RuleLogMode, runRule } from "./interpreter.ts";
 
 Deno.test("sanity check", async () => {

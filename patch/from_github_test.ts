@@ -12,7 +12,8 @@ const testRepo: IGitHubRepository = {
 };
 
 Deno.test("single file with modification", async () => {
-  const pl = await patchFromGitHubPullRequest(octokit, testRepo, 1);
+  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 1);
+  const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Modified);
@@ -21,7 +22,8 @@ Deno.test("single file with modification", async () => {
 });
 
 Deno.test("single file with multiple modifications", async () => {
-  const pl = await patchFromGitHubPullRequest(octokit, testRepo, 2);
+  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 2);
+  const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Modified);
@@ -30,7 +32,8 @@ Deno.test("single file with multiple modifications", async () => {
 });
 
 Deno.test("multiple file with modifications", async () => {
-  const pl = await patchFromGitHubPullRequest(octokit, testRepo, 24);
+  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 24);
+  const pl = patches.patchList;
   assertEquals(pl.length, 2);
 
   const seen: Record<string, null | IPatch> = {
@@ -55,7 +58,8 @@ Deno.test("multiple file with modifications", async () => {
 });
 
 Deno.test("new file added", async () => {
-  const pl = await patchFromGitHubPullRequest(octokit, testRepo, 21);
+  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 21);
+  const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "newconfig.json");
   assertEquals(pl[0].op, PatchOp.Insert);
@@ -64,7 +68,8 @@ Deno.test("new file added", async () => {
 });
 
 Deno.test("file removed", async () => {
-  const pl = await patchFromGitHubPullRequest(octokit, testRepo, 22);
+  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 22);
+  const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Delete);

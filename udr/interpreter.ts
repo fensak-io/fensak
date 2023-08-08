@@ -1,11 +1,29 @@
-import { Interpreter } from "../deps.ts";
-import { IPatch } from "../patch/mod.ts";
+import { Interpreter, Octokit } from "../deps.ts";
+import { IPatch, SourcePlatform } from "../patch/mod.ts";
 
 // Max time in milliseconds for the user defined rule to run. Any UDR functions that take longer than this will throw an error.
 const maxUDRRuntime = 5000;
 // Sleep every 100 steps to yield to other tasks.
 const maxStepIterationsBeforeSleep = 100;
 const sleepBetweenStepIterations = 100;
+
+/**
+ * The client objects to use for fetching the file contents.
+ * @property github The authenticated Octokit client that should be used to fetch the file contents for GitHub.
+ */
+export interface IFileFetchClients {
+  github: Octokit;
+}
+
+/**
+ * Options for the rule interpreter engine.
+ * @property fileFetchMap The mapping from source platforms to the URL map for fetching file contents.
+ * @property fileFetchClients The authenticated API clients to use for fetching the files.
+ */
+export interface IRuleInterpreterOpts {
+  fileFetchMap: Record<SourcePlatform, Record<string, URL>>;
+  fileFetchClients: IFileFetchClients;
+}
 
 // deno-lint-ignore no-explicit-any
 function setupConsole(interpreter: any, scope: any) {
@@ -38,6 +56,8 @@ function setupConsole(interpreter: any, scope: any) {
 export function runRule(
   ruleFn: string,
   patchList: IPatch[],
+  // TODO: add support for fetching the contents
+  _opts?: IRuleInterpreterOpts,
 ): Promise<boolean> {
   const code = `${ruleFn}
 var inp = JSON.parse(getInput());

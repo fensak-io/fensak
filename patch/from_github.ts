@@ -1,5 +1,6 @@
-import { Octokit } from "../deps.ts";
+import { crypto, hex, Octokit, toHashString } from "../deps.ts";
 import { IPatch, PatchOp } from "./patch.ts";
+import { SourcePlatform } from "./from.ts";
 
 /**
  * Represents a repository hosted on GitHub.
@@ -12,7 +13,20 @@ export interface IGitHubRepository {
 }
 
 /**
- * Create an IPatch array containing the changes from a Pull Request.
+ * Represents the decoded patches for the Pull Request. This also includes a mapping from patch IDs to the URL to
+ * retrieve the file contents.
+ * @property patchList The list of file patches that are included in this PR.
+ * @property patchFetchMap A mapping from a URL hash to the URL to fetch the contents for the file. The URL hash is
+ *                         the sha256 hash of the URL with a random salt.
+ */
+export interface IGitHubPullRequestPatches {
+  patchList: IPatch[];
+  patchFetchMap: Record<string, URL>;
+}
+
+/**
+ * Pull in the changes contained in the Pull Request and create an IPatch array and a mapping from PR file IDs to the
+ * URL to fetch the contents.
  * @param clt An authenticated or anonymous GitHub API client created from Octokit.
  * @param repo The repository to pull the pull request changes from.
  * @param prNum The number of the PR where the changes should be pulled from.
@@ -22,7 +36,7 @@ export async function patchFromGitHubPullRequest(
   clt: Octokit,
   repo: IGitHubRepository,
   prNum: number,
-): Promise<IPatch[]> {
+): Promise<IGitHubPullRequestPatches> {
   const iter = clt.paginate.iterator(
     clt.pulls.listFiles,
     {
@@ -36,9 +50,21 @@ export async function patchFromGitHubPullRequest(
     },
   );
 
-  const out: IPatch[] = [];
+  const a = new Uint8Array(8);
+  crypto.getRandomValues(a);
+  const fetchMapSalt = new TextDecoder().decode(hex.encode(a));
+
+  const out: IGitHubPullRequestPatches = {
+    patchList: [],
+    patchFetchMap: {},
+  };
   for await (const { data: prFiles } of iter) {
     for (const f of prFiles) {
+      const fContentsURL = new URL(f.contents_url);
+      const fContentsHash = await getGitHubPRFileID(fetchMapSalt, fContentsURL);
+      out.patchFetchMap[fContentsHash] = fContentsURL;
+      const fid = `${SourcePlatform.GitHub}:${fContentsHash}`;
+
       let op = PatchOp.Unknown;
       switch (f.status) {
         // This should never happen, so we throw an error
@@ -53,21 +79,17 @@ export async function patchFromGitHubPullRequest(
             // This shouldn't happen because of the way the GitHub API works, so we throw an error.
             throw new Error("previous filename not available for a rename");
           }
-          out[out.length] = {
+          out.patchList[out.patchList.length] = {
+            contentsID: fid,
             path: f.previous_filename,
             op: PatchOp.Delete,
-            // TODO: figure out how to retrieve this. Probably through the contents_url?
-            originalFull: "",
-            updatedFull: "",
             // TODO: figure out how to parse the unified patch into hunks.
             diff: [],
           };
-          out[out.length] = {
+          out.patchList[out.patchList.length] = {
+            contentsID: fid,
             path: f.filename,
             op: PatchOp.Insert,
-            // TODO: figure out how to retrieve this. Probably through the contents_url?
-            originalFull: "",
-            updatedFull: "",
             // TODO: figure out how to parse the unified patch into hunks.
             diff: [],
           };
@@ -87,16 +109,23 @@ export async function patchFromGitHubPullRequest(
           op = PatchOp.Modified;
           break;
       }
-      out[out.length] = {
+      out.patchList[out.patchList.length] = {
+        contentsID: fid,
         path: f.filename,
         op: op,
-        // TODO: figure out how to retrieve this. Probably through the contents_url?
-        originalFull: "",
-        updatedFull: "",
         // TODO: figure out how to parse the unified patch into hunks.
         diff: [],
       };
     }
   }
   return out;
+}
+
+async function getGitHubPRFileID(salt: string, url: URL): Promise<string> {
+  const toHash = `${salt}:${url}`;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(toHash),
+  );
+  return toHashString(digest);
 }

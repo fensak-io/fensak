@@ -9,10 +9,9 @@ Deno.test("sanity check", async () => {
 }
 `;
   const result = await runRule(ruleFn, [{
+    contentsID: "helloworld",
     path: "foo.txt",
     op: PatchOp.Insert,
-    originalFull: "",
-    updatedFull: "hello worlld",
     diff: [],
   }]);
   assertEquals(result, true);
@@ -51,7 +50,7 @@ Deno.test("XMLHTTPRequest not supported", async () => {
       setOutput("false");
     }
   });
-  req.open("GET", inp[0].updatedFull);
+  req.open("GET", inp[0].id);
   req.send();
   return true;
 }`;
@@ -59,10 +58,9 @@ Deno.test("XMLHTTPRequest not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "http://example.com/example.txt",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "http://example.com/example.txt",
         diff: [],
       }]),
     Error,
@@ -72,7 +70,7 @@ Deno.test("XMLHTTPRequest not supported", async () => {
 
 Deno.test("fetch is not supported", async () => {
   const ruleFn = `function main(inp) {
-  fetch(inp[0].updatedFull).then(function(response) {
+  fetch(inp[0].id).then(function(response) {
     setOutput("false");
   });
   return true
@@ -81,10 +79,9 @@ Deno.test("fetch is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "http://example.com/example.txt",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "http://example.com/example.txt",
         diff: [],
       }]),
     Error,
@@ -101,10 +98,9 @@ Deno.test("process is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "helloworld",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "hello worlld",
         diff: [],
       }]),
     Error,
@@ -121,10 +117,9 @@ Deno.test("Deno is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "helloworld",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "hello worlld",
         diff: [],
       }]),
     Error,

@@ -30,7 +30,7 @@ jobs:
         run: deno lint
 
       - name: test
-        run: deno test --reporter=junit --junit-path=./report.xml
+        run: deno test --allow-net --reporter=junit --junit-path=./report.xml
 
       - name: report
         uses: mikepenz/action-junit-report@7210fead7f92f6395c37241964df3b0f730f5e4e # v3.7.1

@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from "../test_deps.ts";
 
-import { PatchOp, runRule } from "./interpreter.ts";
+import { PatchOp } from "../patch/mod.ts";
+import { RuleLogLevel, RuleLogMode, runRule } from "./interpreter.ts";
 
 Deno.test("sanity check", async () => {
   const ruleFn = `function main(inp) {
@@ -8,13 +9,103 @@ Deno.test("sanity check", async () => {
 }
 `;
   const result = await runRule(ruleFn, [{
+    contentsID: "helloworld",
     path: "foo.txt",
     op: PatchOp.Insert,
-    originalFull: "",
-    updatedFull: "hello worlld",
+    additions: 0,
+    deletions: 0,
     diff: [],
   }]);
-  assertEquals(result, true);
+  assertEquals(result.approve, true);
+});
+
+Deno.test("basic logging", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello world",
+  }]);
+});
+
+Deno.test("logging with multiple objects", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello", "world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello world",
+  }]);
+});
+
+Deno.test("logging order", async () => {
+  const ruleFn = `function main(inp) {
+  console.log("hello");
+  console.log("world");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Info,
+    msg: "hello",
+  }, {
+    level: RuleLogLevel.Info,
+    msg: "world",
+  }]);
+});
+
+Deno.test("logging warn level", async () => {
+  const ruleFn = `function main(inp) {
+  console.warn("hello");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Warn,
+    msg: "hello",
+  }]);
+});
+
+Deno.test("logging error level", async () => {
+  const ruleFn = `function main(inp) {
+  console.error("hello");
+  return inp.length === 1;
+}
+`;
+  const opts = {
+    logMode: RuleLogMode.Capture,
+  };
+  const result = await runRule(ruleFn, [], opts);
+  assertEquals(result.approve, false);
+  assertEquals(result.logs, [{
+    level: RuleLogLevel.Error,
+    msg: "hello",
+  }]);
 });
 
 Deno.test("main return must be boolean", async () => {
@@ -50,7 +141,7 @@ Deno.test("XMLHTTPRequest not supported", async () => {
       setOutput("false");
     }
   });
-  req.open("GET", inp[0].updatedFull);
+  req.open("GET", inp[0].id);
   req.send();
   return true;
 }`;
@@ -58,10 +149,11 @@ Deno.test("XMLHTTPRequest not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "http://example.com/example.txt",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "http://example.com/example.txt",
+        additions: 0,
+        deletions: 0,
         diff: [],
       }]),
     Error,
@@ -71,7 +163,7 @@ Deno.test("XMLHTTPRequest not supported", async () => {
 
 Deno.test("fetch is not supported", async () => {
   const ruleFn = `function main(inp) {
-  fetch(inp[0].updatedFull).then(function(response) {
+  fetch(inp[0].id).then(function(response) {
     setOutput("false");
   });
   return true
@@ -80,10 +172,11 @@ Deno.test("fetch is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "http://example.com/example.txt",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "http://example.com/example.txt",
+        additions: 0,
+        deletions: 0,
         diff: [],
       }]),
     Error,
@@ -100,10 +193,11 @@ Deno.test("process is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "helloworld",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "hello worlld",
+        additions: 0,
+        deletions: 0,
         diff: [],
       }]),
     Error,
@@ -120,10 +214,11 @@ Deno.test("Deno is not supported", async () => {
   await assertRejects(
     () =>
       runRule(ruleFn, [{
+        contentsID: "helloworld",
         path: "foo.txt",
         op: PatchOp.Insert,
-        originalFull: "",
-        updatedFull: "hello worlld",
+        additions: 0,
+        deletions: 0,
         diff: [],
       }]),
     Error,

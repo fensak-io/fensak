@@ -1,81 +1,5 @@
-import { Interpreter } from "../deps.ts";
-
-/**
- * The operation on a line in a hunk of a patch.
- * @property Unknown Unknown operation.
- * @property Insert The line was inserted in this hunk.
- * @property Delete The line was deleted in this hunk .
- * @property Modified The line was modified in this hunk.
- * @property Untouched The line was not touched in this hunk. This is usually provided to provide context.
- */
-export enum LineOp {
-  Unknown = "unknown",
-  Insert = "insert",
-  Delete = "delete",
-  Modified = "modified",
-  Untouched = "untouched",
-}
-
-/**
- * Represents updates to a single line in a hunk.
- * @property pos The position of the line in the source file.
- * @property op The operation that was done to the line in the hunk.
- * @property text The text context for the operation. For insert operations, this is the line to insert; for delete
- *                operations, this is the line to delete; for modifications this is the resulting text.
- */
-export interface ILineDiff {
-  pos: number;
-  op: LineOp;
-  text: string;
-}
-
-/**
- * Represents updates to a section of the file in a patch.
- * @property originalStart The starting line in the original file (before the change) where the hunk applies.
- * @property originalLength The number of lines after the start in the original file where the hunk applies.
- * @property updatedStart The starting line in the updated file (before the change) where the hunk applies.
- * @property updatedLength The number of lines after the start in the updated file where the hunk applies.
- * @property diffOperations The list of modifications to apply to the source file in the range to get the updated file.
- */
-export interface IHunk {
-  originalStart: number;
-  originalLength: number;
-  updatedStart: number;
-  updatedLength: number;
-  diffOperations: ILineDiff[];
-}
-
-/**
- * The operation on the file in the patch.
- * @property Unknown Unknown operation.
- * @property Insert The file was inserted in this patch.
- * @property Delete The file was deleted in this patch.
- * @property Modified The file was modified in this patch.
- */
-export enum PatchOp {
-  Unknown = "unknown",
-  Insert = "insert",
-  Delete = "delete",
-  Modified = "modified",
-}
-
-/**
- * Represents updates to a single file that was done in the change set.
- * @property path The relative path (from the root of the repo) to the file that was updated in the patch.
- * @property op The operation that was done on the file in the patch.
- * @property originalFull The full contents of the original file (before the change). This is empty if the operation is
- *                        Insert.
- * @property updatedFull The full contents of the updated file (after the change). This is empty if the operation is
- *                       Delete.
- * @property diff The list of diffs, organized into hunks.
- */
-export interface IPatch {
-  path: string;
-  op: PatchOp;
-  originalFull: string;
-  updatedFull: string;
-  diff: IHunk[];
-}
+import { Interpreter, Octokit } from "../deps.ts";
+import { IPatch, SourcePlatform } from "../patch/mod.ts";
 
 // Max time in milliseconds for the user defined rule to run. Any UDR functions that take longer than this will throw an error.
 const maxUDRRuntime = 5000;
@@ -83,21 +7,61 @@ const maxUDRRuntime = 5000;
 const maxStepIterationsBeforeSleep = 100;
 const sleepBetweenStepIterations = 100;
 
-// deno-lint-ignore no-explicit-any
-function setupConsole(interpreter: any, scope: any) {
-  const nativeConsole = interpreter.createObjectProto(interpreter.OBJECT_PROTO);
+/**
+ * The client objects to use for fetching the file contents.
+ * @property github The authenticated Octokit client that should be used to fetch the file contents for GitHub.
+ */
+export interface IFileFetchClients {
+  github: Octokit;
+}
 
-  const nativeLogFunc = interpreter.createNativeFunction(console.log);
-  interpreter.setProperty(nativeConsole, "log", nativeLogFunc);
-  const nativeErrorFunc = interpreter.createNativeFunction(console.error);
-  interpreter.setProperty(nativeConsole, "error", nativeErrorFunc);
-  const nativeInfoFunc = interpreter.createNativeFunction(console.info);
-  interpreter.setProperty(nativeConsole, "info", nativeInfoFunc);
-  const nativeDebugFunc = interpreter.createNativeFunction(console.debug);
-  interpreter.setProperty(nativeConsole, "debug", nativeDebugFunc);
+export enum RuleLogLevel {
+  Info = "info",
+  Warn = "warn",
+  Error = "error",
+}
 
-  interpreter.setProperty(scope, "console", nativeConsole);
-  interpreter.setProperty(scope, "log", nativeLogFunc);
+/**
+ * The logging mode of the rules interpreter.
+ * @property Drop Drop all messages.
+ * @property Console Log to the native console.
+ * @property Capture Capture the log entries into memory and return it.
+ */
+export enum RuleLogMode {
+  Drop = "drop",
+  Console = "console",
+  Capture = "capture",
+}
+
+/**
+ * Options for the rule interpreter engine.
+ * @property fileFetchMap The mapping from source platforms to the URL map for fetching file contents.
+ * @property fileFetchClients The authenticated API clients to use for fetching the files.
+ */
+export interface IRuleInterpreterOpts {
+  fileFetchMap?: Record<SourcePlatform, Record<string, URL>>;
+  fileFetchClients?: IFileFetchClients;
+  logMode?: RuleLogMode;
+}
+
+/**
+ * Log entry from the rule function.
+ * @property level The log level.
+ * @property msg The log message.
+ */
+export interface IRuleLogEntry {
+  level: RuleLogLevel;
+  msg: string;
+}
+
+/**
+ * The results of running a rule.
+ * @property approve Whether to approve the change.
+ * @property logs A list of log entries.
+ */
+export interface IRuleResult {
+  approve: boolean;
+  logs: IRuleLogEntry[];
 }
 
 /**
@@ -114,7 +78,9 @@ function setupConsole(interpreter: any, scope: any) {
 export function runRule(
   ruleFn: string,
   patchList: IPatch[],
-): Promise<boolean> {
+  // TODO: add support for fetching the contents
+  opts?: IRuleInterpreterOpts,
+): Promise<IRuleResult> {
   const code = `${ruleFn}
 var inp = JSON.parse(getInput());
 var out = main(inp);
@@ -124,13 +90,78 @@ if (typeof out !== "boolean") {
 setOutput(JSON.stringify(out));
 `;
 
-  let output = false;
+  let logMode = RuleLogMode.Drop;
+  if (opts && opts.logMode) {
+    logMode = opts.logMode;
+  }
+
+  const result: IRuleResult = {
+    approve: false,
+    logs: [],
+  };
   const interpreter = new Interpreter(
     code,
     // deno-lint-ignore no-explicit-any
     (interpreter: any, scope: any) => {
       // Setup the console object so that the user functions can emit debug logs for introspection.
-      setupConsole(interpreter, scope);
+      const nativeConsole = interpreter.createObjectProto(
+        interpreter.OBJECT_PROTO,
+      );
+      interpreter.setProperty(
+        nativeConsole,
+        "log",
+        // deno-lint-ignore no-explicit-any
+        interpreter.createNativeFunction((...objs: any[]) => {
+          switch (logMode) {
+            case RuleLogMode.Console:
+              console.log(...objs);
+              break;
+            case RuleLogMode.Capture:
+              result.logs.push({
+                level: RuleLogLevel.Info,
+                msg: objsToString(objs),
+              });
+              break;
+          }
+        }),
+      );
+      interpreter.setProperty(
+        nativeConsole,
+        "warn",
+        // deno-lint-ignore no-explicit-any
+        interpreter.createNativeFunction((...objs: any[]) => {
+          switch (logMode) {
+            case RuleLogMode.Console:
+              console.warn(...objs);
+              break;
+            case RuleLogMode.Capture:
+              result.logs.push({
+                level: RuleLogLevel.Warn,
+                msg: objsToString(objs),
+              });
+              break;
+          }
+        }),
+      );
+      interpreter.setProperty(
+        nativeConsole,
+        "error",
+        // deno-lint-ignore no-explicit-any
+        interpreter.createNativeFunction((...objs: any[]) => {
+          switch (logMode) {
+            case RuleLogMode.Console:
+              console.error(...objs);
+              break;
+            case RuleLogMode.Capture:
+              result.logs.push({
+                level: RuleLogLevel.Error,
+                msg: objsToString(objs),
+              });
+              break;
+          }
+        }),
+      );
+      interpreter.setProperty(scope, "console", nativeConsole);
 
       // Setup getInput and getOutput inline so that they can access the patch object and output variable to message
       // pass between the main thread and the interpreter.
@@ -145,12 +176,16 @@ setOutput(JSON.stringify(out));
         scope,
         "setOutput",
         interpreter.createNativeFunction((jsonOut: string) => {
-          output = JSON.parse(jsonOut);
+          result.approve = JSON.parse(jsonOut);
         }),
       );
     },
   );
-  const outputPromise = new Promise<boolean>((resolve, reject) => {
+
+  // Use REGEXP_MODE = 1 since Deno doesn't support REGEXP_MODE = 2
+  interpreter.REGEXP_MODE = 1;
+
+  const outputPromise = new Promise<IRuleResult>((resolve, reject) => {
     (async () => {
       let rejected = false;
       let sleeping: number | null = null;
@@ -177,7 +212,7 @@ setOutput(JSON.stringify(out));
             iterations = 0;
           }
         }
-        resolve(output);
+        resolve(result);
       } catch (e) {
         reject(e);
       } finally {
@@ -186,4 +221,13 @@ setOutput(JSON.stringify(out));
     })();
   });
   return outputPromise;
+}
+
+// deno-lint-ignore no-explicit-any
+function objsToString(objs: any[]): string {
+  const msgs: string[] = [];
+  for (const o of objs) {
+    msgs.push(`${o}`);
+  }
+  return msgs.join(" ");
 }

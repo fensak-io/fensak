@@ -10,6 +10,10 @@ This repository has two top level sources:
 - `mod.ts`: This contains the entry point for the `fgo` library, which contains
   useful functions for testing user defined scripts.
 
+For examples of user defined rules including how to test them using functions in this repository, refer to the
+[fgo-rules-examples](https://github.com/fensak-io/fgo-rules-examples) repo.
+
+
 ## LICENSE
 
 This library is distributed under the

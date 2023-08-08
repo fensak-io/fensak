@@ -1,5 +1,5 @@
 import { crypto, hex, Octokit, toHashString } from "../deps.ts";
-import { IPatch, PatchOp } from "./patch.ts";
+import { IPatch, parseUnifiedDiff, PatchOp } from "./patch.ts";
 import { SourcePlatform } from "./from.ts";
 
 /**
@@ -79,20 +79,24 @@ export async function patchFromGitHubPullRequest(
             // This shouldn't happen because of the way the GitHub API works, so we throw an error.
             throw new Error("previous filename not available for a rename");
           }
-          out.patchList[out.patchList.length] = {
+          out.patchList.push({
             contentsID: fid,
             path: f.previous_filename,
             op: PatchOp.Delete,
-            // TODO: figure out how to parse the unified patch into hunks.
+            // TODO: this requires pulling down the file contents
+            additions: 0,
+            deletions: 0,
             diff: [],
-          };
-          out.patchList[out.patchList.length] = {
+          });
+          out.patchList.push({
             contentsID: fid,
             path: f.filename,
             op: PatchOp.Insert,
-            // TODO: figure out how to parse the unified patch into hunks.
+            // TODO: this requires pulling down the file contents
+            additions: 0,
+            deletions: 0,
             diff: [],
-          };
+          });
           continue;
 
         // The rest only needs to set the op
@@ -109,13 +113,14 @@ export async function patchFromGitHubPullRequest(
           op = PatchOp.Modified;
           break;
       }
-      out.patchList[out.patchList.length] = {
+      out.patchList.push({
         contentsID: fid,
         path: f.filename,
         op: op,
-        // TODO: figure out how to parse the unified patch into hunks.
-        diff: [],
-      };
+        additions: f.additions,
+        deletions: f.deletions,
+        diff: parseUnifiedDiff(f.patch || ""),
+      });
     }
   }
   return out;

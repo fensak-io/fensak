@@ -1,7 +1,7 @@
 import { assertEquals, assertNotEquals } from "../test_deps.ts";
 import { Octokit } from "../deps.ts";
 
-import { IPatch, PatchOp } from "./patch.ts";
+import { IPatch, LineOp, PatchOp } from "./patch.ts";
 import { patchFromGitHubPullRequest } from "./from_github.ts";
 import type { IGitHubRepository } from "./from_github.ts";
 
@@ -18,7 +18,35 @@ Deno.test("single file with modification", async () => {
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Modified);
 
-  // TODO: verify patch hunks
+  const diffs = pl[0].diff;
+  assertEquals(diffs.length, 1);
+  assertEquals(diffs[0], {
+    originalStart: 1,
+    originalLength: 5,
+    updatedStart: 1,
+    updatedLength: 5,
+    diffOperations: [{
+      op: LineOp.Untouched,
+      text: "{",
+      newText: "",
+    }, {
+      op: LineOp.Untouched,
+      text: `  "coreapp": "v0.1.0",`,
+      newText: "",
+    }, {
+      op: LineOp.Modified,
+      text: `  "subapp": "v1.1.0",`,
+      newText: `  "subapp": "v1.2.0",`,
+    }, {
+      op: LineOp.Untouched,
+      text: `  "logapp": "v100.1.0"`,
+      newText: "",
+    }, {
+      op: LineOp.Untouched,
+      text: "}",
+      newText: "",
+    }],
+  });
 });
 
 Deno.test("single file with multiple modifications", async () => {
@@ -28,7 +56,35 @@ Deno.test("single file with multiple modifications", async () => {
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Modified);
 
-  // TODO: verify patch hunks
+  const diffs = pl[0].diff;
+  assertEquals(diffs.length, 1);
+  assertEquals(diffs[0], {
+    originalStart: 1,
+    originalLength: 5,
+    updatedStart: 1,
+    updatedLength: 5,
+    diffOperations: [{
+      op: LineOp.Untouched,
+      text: "{",
+      newText: "",
+    }, {
+      op: LineOp.Untouched,
+      text: `  "coreapp": "v0.1.0",`,
+      newText: "",
+    }, {
+      op: LineOp.Modified,
+      text: `  "subapp": "v1.1.0",`,
+      newText: `  "subapp": "v1.2.0",`,
+    }, {
+      op: LineOp.Modified,
+      text: `  "logapp": "v100.1.0"`,
+      newText: `  "logapp": "v100.2.0"`,
+    }, {
+      op: LineOp.Untouched,
+      text: "}",
+      newText: "",
+    }],
+  });
 });
 
 Deno.test("multiple file with modifications", async () => {
@@ -54,7 +110,64 @@ Deno.test("multiple file with modifications", async () => {
   assertNotEquals(seen["appversions.json"], null);
   assertNotEquals(seen["appversions.tfvars"], null);
 
-  // TODO: verify patch hunks
+  if (seen["appversions.json"] == null) {
+    throw new Error("impossible");
+  }
+  if (seen["appversions.tfvars"] == null) {
+    throw new Error("impossible");
+  }
+
+  const jsonDiff = seen["appversions.json"].diff;
+  assertEquals(jsonDiff.length, 1);
+  assertEquals(jsonDiff[0], {
+    originalStart: 1,
+    originalLength: 5,
+    updatedStart: 1,
+    updatedLength: 5,
+    diffOperations: [{
+      op: LineOp.Untouched,
+      text: "{",
+      newText: "",
+    }, {
+      op: LineOp.Untouched,
+      text: `  "coreapp": "v0.1.0",`,
+      newText: "",
+    }, {
+      op: LineOp.Modified,
+      text: `  "subapp": "v1.1.0",`,
+      newText: `  "subapp": "v1.2.0",`,
+    }, {
+      op: LineOp.Untouched,
+      text: `  "logapp": "v100.1.0"`,
+      newText: "",
+    }, {
+      op: LineOp.Untouched,
+      text: "}",
+      newText: "",
+    }],
+  });
+
+  const tfvarsDiff = seen["appversions.tfvars"].diff;
+  assertEquals(tfvarsDiff.length, 1);
+  assertEquals(tfvarsDiff[0], {
+    originalStart: 1,
+    originalLength: 3,
+    updatedStart: 1,
+    updatedLength: 3,
+    diffOperations: [{
+      op: LineOp.Untouched,
+      text: `coreapp_version = "v0.1.0"`,
+      newText: "",
+    }, {
+      op: LineOp.Modified,
+      text: `subapp_version  = "v1.1.0"`,
+      newText: `subapp_version  = "v1.2.0"`,
+    }, {
+      op: LineOp.Untouched,
+      text: `logapp_version  = "v100.1.0"`,
+      newText: "",
+    }],
+  });
 });
 
 Deno.test("new file added", async () => {
@@ -64,7 +177,27 @@ Deno.test("new file added", async () => {
   assertEquals(pl[0].path, "newconfig.json");
   assertEquals(pl[0].op, PatchOp.Insert);
 
-  // TODO: verify patch hunks
+  const diffs = pl[0].diff;
+  assertEquals(diffs.length, 1);
+  assertEquals(diffs[0], {
+    originalStart: 0,
+    originalLength: 0,
+    updatedStart: 1,
+    updatedLength: 3,
+    diffOperations: [{
+      op: LineOp.Insert,
+      text: "{",
+      newText: "",
+    }, {
+      op: LineOp.Insert,
+      text: `  "greeting": "hello world"`,
+      newText: "",
+    }, {
+      op: LineOp.Insert,
+      text: "}",
+      newText: "",
+    }],
+  });
 });
 
 Deno.test("file removed", async () => {
@@ -74,5 +207,33 @@ Deno.test("file removed", async () => {
   assertEquals(pl[0].path, "appversions.json");
   assertEquals(pl[0].op, PatchOp.Delete);
 
-  // TODO: verify patch hunks
+  const diffs = pl[0].diff;
+  assertEquals(diffs.length, 1);
+  assertEquals(diffs[0], {
+    originalStart: 1,
+    originalLength: 5,
+    updatedStart: 0,
+    updatedLength: 0,
+    diffOperations: [{
+      op: LineOp.Delete,
+      text: "{",
+      newText: "",
+    }, {
+      op: LineOp.Delete,
+      text: `  "coreapp": "v0.1.0",`,
+      newText: "",
+    }, {
+      op: LineOp.Delete,
+      text: `  "subapp": "v1.1.0",`,
+      newText: "",
+    }, {
+      op: LineOp.Delete,
+      text: `  "logapp": "v100.1.0"`,
+      newText: "",
+    }, {
+      op: LineOp.Delete,
+      text: "}",
+      newText: "",
+    }],
+  });
 });

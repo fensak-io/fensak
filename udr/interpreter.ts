@@ -94,6 +94,10 @@ setOutput(JSON.stringify(out));
       );
     },
   );
+
+  // Use REGEXP_MODE = 1 since Deno doesn't support REGEXP_MODE = 2
+  interpreter.REGEXP_MODE = 1;
+
   const outputPromise = new Promise<boolean>((resolve, reject) => {
     (async () => {
       let rejected = false;

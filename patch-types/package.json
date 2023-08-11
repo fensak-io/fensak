@@ -1,0 +1,8 @@
+{
+  "name": "@fensak-io/fgo-patch-types",
+  "description": "Type definitions for patch objects for the Fensak GO rules engine.",
+  "author": "Fensak, LLC",
+  "license": "BUSL-1.1",
+  "version": "1.0.4",
+  "types": "./index.d.ts"
+}

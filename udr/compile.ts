@@ -1,5 +1,4 @@
 import { babel, babelPresetEnv, babelPresetTypescript } from "../deps.ts";
-import { patchTypesSrc } from "../patch/mod.ts";
 
 /**
  * The source language of the rule function. Determines compiler settings to ensure it can be compiled down to ES5.
@@ -33,11 +32,8 @@ export function compileRuleFn(
   if (srcLang == RuleFnSourceLang.Typescript) {
     // For typescript, we need two passes: once to compile TS to ES6, then ES6 to ES5.
     // So here, we just take care of compiling to ES6.
-    // We also prepend the types so that the main function can take advantage of the type information.
-    ruleFn = `${patchTypesSrc}
-
-${ruleFn}
-`;
+    // We also remove any lines surrounding the keyword "fgo remove-start" and "fgo remove-end" to support type imports.
+    ruleFn = removeCommentSurroundedKeyword(ruleFn);
     ruleFn = babel.transform(ruleFn, {
       presets: [babelPresetTypescript],
       filename: "rule.ts",
@@ -46,4 +42,20 @@ ${ruleFn}
 
   // ruleFn is assumed to be in ES6 at this point.
   return babel.transform(ruleFn, { presets: [babelPresetEnv] }).code;
+}
+
+function removeCommentSurroundedKeyword(ruleFn: string): string {
+  const out: string[] = [];
+  const lines = ruleFn.split("\n");
+  let ignore = false;
+  for (const l of lines) {
+    if (l === "// fgo remove-start") {
+      ignore = true;
+    } else if (l === "// fgo remove-end") {
+      ignore = false;
+    } else if (!ignore) {
+      out.push(l);
+    }
+  }
+  return out.join("\n");
 }

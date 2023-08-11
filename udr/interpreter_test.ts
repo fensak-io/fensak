@@ -40,7 +40,12 @@ Deno.test("ES6 support", async () => {
 });
 
 Deno.test("TS support", async () => {
-  const rawRuleFn = `function main(inp) {
+  const rawRuleFn = `
+// fgo remove-start
+import type { IPatch } from "@fensak-io/fgo-patch-types";
+// fgo remove-end
+
+function main(inp: IPatch[]) {
   const l: number = inp.length;
   return l === 1;
 }

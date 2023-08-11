@@ -2,12 +2,51 @@ import { assertEquals, assertRejects } from "../test_deps.ts";
 
 import { PatchOp } from "../patch/mod.ts";
 import { RuleLogLevel, RuleLogMode, runRule } from "./interpreter.ts";
+import { compileRuleFn, RuleFnSourceLang } from "./compile.ts";
 
 Deno.test("sanity check", async () => {
   const ruleFn = `function main(inp) {
   return inp.length === 1;
 }
 `;
+  const result = await runRule(ruleFn, [{
+    contentsID: "helloworld",
+    path: "foo.txt",
+    op: PatchOp.Insert,
+    additions: 0,
+    deletions: 0,
+    diff: [],
+  }]);
+  assertEquals(result.approve, true);
+});
+
+Deno.test("ES6 support", async () => {
+  const rawRuleFn = `function main(inp) {
+  const l = inp.length;
+  return l === 1;
+}
+`;
+
+  const ruleFn = compileRuleFn(rawRuleFn, RuleFnSourceLang.ES6);
+  const result = await runRule(ruleFn, [{
+    contentsID: "helloworld",
+    path: "foo.txt",
+    op: PatchOp.Insert,
+    additions: 0,
+    deletions: 0,
+    diff: [],
+  }]);
+  assertEquals(result.approve, true);
+});
+
+Deno.test("TS support", async () => {
+  const rawRuleFn = `function main(inp) {
+  const l: number = inp.length;
+  return l === 1;
+}
+`;
+
+  const ruleFn = compileRuleFn(rawRuleFn, RuleFnSourceLang.Typescript);
   const result = await runRule(ruleFn, [{
     contentsID: "helloworld",
     path: "foo.txt",

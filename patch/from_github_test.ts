@@ -1,7 +1,7 @@
 import { assertEquals, assertNotEquals } from "../test_deps.ts";
 import { Octokit } from "../deps.ts";
 
-import { IPatch, LineOp, PatchOp } from "./patch.ts";
+import { IPatch, LineOp, PatchOp } from "./patch_types.ts";
 import { patchFromGitHubPullRequest } from "./from_github.ts";
 import type { IGitHubRepository } from "./from_github.ts";
 

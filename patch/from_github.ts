@@ -1,5 +1,6 @@
 import { crypto, hex, Octokit, toHashString } from "../deps.ts";
-import { IPatch, parseUnifiedDiff, PatchOp } from "./patch.ts";
+import { parseUnifiedDiff } from "./patch.ts";
+import { IPatch, PatchOp } from "./patch_types.ts";
 import { SourcePlatform } from "./from.ts";
 
 /**

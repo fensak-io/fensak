@@ -1,4 +1,5 @@
 import { babel, babelPresetEnv, babelPresetTypescript } from "../deps.ts";
+import { patchTypesSrc } from "../patch/mod.ts";
 
 /**
  * The source language of the rule function. Determines compiler settings to ensure it can be compiled down to ES5.
@@ -32,6 +33,11 @@ export function compileRuleFn(
   if (srcLang == RuleFnSourceLang.Typescript) {
     // For typescript, we need two passes: once to compile TS to ES6, then ES6 to ES5.
     // So here, we just take care of compiling to ES6.
+    // We also prepend the types so that the main function can take advantage of the type information.
+    ruleFn = `${patchTypesSrc}
+
+${ruleFn}
+`;
     ruleFn = babel.transform(ruleFn, {
       presets: [babelPresetTypescript],
       filename: "rule.ts",

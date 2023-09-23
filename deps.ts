@@ -1,8 +1,8 @@
 export {
   crypto,
   toHashString,
-} from "https://deno.land/std@0.197.0/crypto/mod.ts";
-export * as hex from "https://deno.land/std@0.197.0/encoding/hex.ts";
+} from "https://deno.land/std@0.202.0/crypto/mod.ts";
+export * as hex from "https://deno.land/std@0.202.0/encoding/hex.ts";
 
 export { Octokit } from "npm:@octokit/rest@^20.0.0";
 import babel from "npm:@babel/core@^7.22.10";

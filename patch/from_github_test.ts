@@ -8,7 +8,7 @@ import type { IGitHubRepository } from "./from_github.ts";
 const octokit = new Octokit();
 const testRepo: IGitHubRepository = {
   owner: "fensak-test",
-  name: "test-fgo-rules-engine",
+  name: "test-fensak-rules-engine",
 };
 
 Deno.test("single file with modification", async () => {

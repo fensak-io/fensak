@@ -32,7 +32,7 @@ export function compileRuleFn(
   if (srcLang == RuleFnSourceLang.Typescript) {
     // For typescript, we need two passes: once to compile TS to ES6, then ES6 to ES5.
     // So here, we just take care of compiling to ES6.
-    // We also remove any lines surrounding the keyword "fgo remove-start" and "fgo remove-end" to support type imports.
+    // We also remove any lines surrounding the keyword "fensak remove-start" and "fensak remove-end" to support type imports.
     ruleFn = removeCommentSurroundedKeyword(ruleFn);
     ruleFn = babel.transform(ruleFn, {
       presets: [babelPresetTypescript],
@@ -49,9 +49,9 @@ function removeCommentSurroundedKeyword(ruleFn: string): string {
   const lines = ruleFn.split("\n");
   let ignore = false;
   for (const l of lines) {
-    if (l === "// fgo remove-start") {
+    if (l === "// fensak remove-start") {
       ignore = true;
-    } else if (l === "// fgo remove-end") {
+    } else if (l === "// fensak remove-end") {
       ignore = false;
     } else if (!ignore) {
       out.push(l);

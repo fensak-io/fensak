@@ -1,4 +1,9 @@
-import { assertEquals, assertRejects } from "../test_deps.ts";
+import {
+  assert,
+  assertEquals,
+  assertFalse,
+  assertRejects,
+} from "../test_deps.ts";
 
 import { PatchOp } from "../patch/mod.ts";
 import { RuleLogLevel, RuleLogMode, runRule } from "./interpreter.ts";
@@ -17,7 +22,7 @@ Deno.test("sanity check", async () => {
     deletions: 0,
     diff: [],
   }]);
-  assertEquals(result.approve, true);
+  assert(result.approve);
 });
 
 Deno.test("ES6 support", async () => {
@@ -36,7 +41,7 @@ Deno.test("ES6 support", async () => {
     deletions: 0,
     diff: [],
   }]);
-  assertEquals(result.approve, true);
+  assert(result.approve);
 });
 
 Deno.test("TS support", async () => {
@@ -60,7 +65,7 @@ function main(inp: IPatch[]) {
     deletions: 0,
     diff: [],
   }]);
-  assertEquals(result.approve, true);
+  assert(result.approve);
 });
 
 Deno.test("basic logging", async () => {
@@ -73,7 +78,7 @@ Deno.test("basic logging", async () => {
     logMode: RuleLogMode.Capture,
   };
   const result = await runRule(ruleFn, [], opts);
-  assertEquals(result.approve, false);
+  assertFalse(result.approve);
   assertEquals(result.logs, [{
     level: RuleLogLevel.Info,
     msg: "hello world",
@@ -90,7 +95,7 @@ Deno.test("logging with multiple objects", async () => {
     logMode: RuleLogMode.Capture,
   };
   const result = await runRule(ruleFn, [], opts);
-  assertEquals(result.approve, false);
+  assertFalse(result.approve);
   assertEquals(result.logs, [{
     level: RuleLogLevel.Info,
     msg: "hello world",
@@ -108,7 +113,7 @@ Deno.test("logging order", async () => {
     logMode: RuleLogMode.Capture,
   };
   const result = await runRule(ruleFn, [], opts);
-  assertEquals(result.approve, false);
+  assertFalse(result.approve);
   assertEquals(result.logs, [{
     level: RuleLogLevel.Info,
     msg: "hello",
@@ -128,7 +133,7 @@ Deno.test("logging warn level", async () => {
     logMode: RuleLogMode.Capture,
   };
   const result = await runRule(ruleFn, [], opts);
-  assertEquals(result.approve, false);
+  assertFalse(result.approve);
   assertEquals(result.logs, [{
     level: RuleLogLevel.Warn,
     msg: "hello",
@@ -145,7 +150,7 @@ Deno.test("logging error level", async () => {
     logMode: RuleLogMode.Capture,
   };
   const result = await runRule(ruleFn, [], opts);
-  assertEquals(result.approve, false);
+  assertFalse(result.approve);
   assertEquals(result.logs, [{
     level: RuleLogLevel.Error,
     msg: "hello",

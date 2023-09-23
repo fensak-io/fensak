@@ -67,9 +67,6 @@ export interface IRuleResult {
 /**
  * Execute the given user defined rule function in JavaScript (EcmaScript 5) against the given patch object.
  *
- * TODO: add support for es6 with babel
- * TODO: add support for typescript with babel
- *
  * @param ruleFn A string containing the definition of a main function that takes in the patch object and returns a bool
  *               indicating if the patch passes the rule (and thus should allow auto-merge).
  * @param patch A list of patch objects to evaluate the rule against.

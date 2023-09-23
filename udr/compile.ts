@@ -15,8 +15,6 @@ export enum RuleFnSourceLang {
 /**
  * Compiles the given rule function using Babel. The rule function can be provided as ES6.
  *
- * TODO: add support for typescript
- *
  * @param ruleFn A string containing the definition of a main function in ES6.
  * @param srcType What language the source is written in. If omitted, defaults to ES5.
  * @returns A string containing the ES5 version of the provided main function.

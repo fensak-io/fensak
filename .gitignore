@@ -132,3 +132,6 @@ dist
 
 # Test output
 junit.xml
+
+# Env files
+*.env

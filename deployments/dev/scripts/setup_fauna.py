@@ -1,6 +1,7 @@
 import subprocess
 import time
 import re
+import json
 
 MAX_RETRIES = 5
 SECONDS_BETWEEN_RETRIES = 5
@@ -43,8 +44,13 @@ def run():
         if key is None:
             raise Exception(f"Could not parse fauna create-key output:\n{out.decode('utf-8')}")
 
-        with open("/workspace/.local.env", "wb") as f:
-            f.write(f"FAUNADB_KEY={key}".encode("utf-8"))
+        with open("/workspace/config/local.json5", "w") as f:
+            cfg = {
+                "faunadb": {
+                    "apiKey": key,
+                }
+            }
+            json.dump(cfg, f)
 
     else:
         print(f"{FENSAK_DB_NAME} already exists")

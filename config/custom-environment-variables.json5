@@ -1,0 +1,9 @@
+{
+  github: {
+    webhookSecret: "FENSAK_GITHUB_WEBHOOK_SECRET",
+  },
+  faunadb: {
+    name: "FENSAK_FAUNADB_NAME",
+    apiKey: "FENSAK_FAUNADB_API_KEY",
+  }
+}

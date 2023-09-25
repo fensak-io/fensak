@@ -1,9 +1,5 @@
-import { GitHubWebhooks } from "../deps.ts";
+import { config, GitHubWebhooks } from "../deps.ts";
 
-const rawSecret = Deno.env.get("FENSAK_GITHUB_WEBHOOK_SECRET");
-let secret = "";
-if (rawSecret) {
-  secret = rawSecret;
-}
+const secret = config.get("github.webhookSecret");
 
 export const githubWebhooks = new GitHubWebhooks({ secret });

@@ -133,5 +133,6 @@ dist
 # Test output
 junit.xml
 
-# Env files
+# Local env or config files
 *.env
+/config/local.*

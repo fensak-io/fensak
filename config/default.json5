@@ -1,0 +1,24 @@
+// NOTE
+// Many of these are secrets, and thus are sourced from environment variables
+// (see ./custom-environment-variables.json5).
+{
+  /**
+   * Settings/Secrets related to interacting with GitHub.
+   */
+  github: {
+    // The secret string used to authenticate GitHub webhook requests coming in.
+    webhookSecret: "",
+  },
+
+  /**
+   * Settings/Secrets related to interacting with FaunaDB.
+   */
+  faunadb: {
+    // The name of the Fauna DB to connect to.
+    name: "fensak",
+    // The web server endpoint where the Fauna DB can be accessed.
+    endpoint: "http://fauna:8443",
+    // The API key to auth and access the Fauna DB.
+    apiKey: "",
+  }
+}

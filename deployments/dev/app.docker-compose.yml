@@ -21,6 +21,10 @@ services:
       - "--allow-env"
       - "--allow-read"
       - "main.ts"
+    environment:
+      # The following env vars must be configured in the host system, since they contain potentially sensitive
+      # information.
+      - "FENSAK_GITHUB_WEBHOOK_SECRET"
     depends_on:
       faunasetup:
         condition: service_completed_successfully

@@ -1,7 +1,7 @@
 import { Context, crypto, Status } from "../deps.ts";
-import type { Next } from "../deps.ts";
+import type { Middleware, Next } from "../deps.ts";
 
-export async function requestId(ctx: Context, next: Next): Promise<void> {
+const requestId: Middleware = async (ctx: Context, next: Next) => {
   let requestId = ctx.request.headers.get("X-Response-Id");
   if (!requestId) {
     /** if request id not being set, set unique request id */
@@ -16,18 +16,18 @@ export async function requestId(ctx: Context, next: Next): Promise<void> {
 
   /** add request id in response header */
   ctx.response.headers.set("X-Response-Id", requestId.toString());
-}
+};
 
-export async function timing(ctx: Context, next: Next): Promise<void> {
+const timing: Middleware = async (ctx: Context, next: Next) => {
   const start = Date.now();
 
   await next();
 
   const ms = Date.now() - start;
   ctx.response.headers.set("X-Response-Time", `${ms}ms`);
-}
+};
 
-export async function error(ctx: Context, next: Next): Promise<void> {
+const error: Middleware = async (ctx: Context, next: Next) => {
   try {
     await next();
   } catch (err) {
@@ -38,9 +38,23 @@ export async function error(ctx: Context, next: Next): Promise<void> {
     ctx.response.status = status;
     ctx.response.body = { status, msg: "internal server error" };
   }
-}
+};
 
-export async function logger(ctx: Context, next: Next): Promise<void> {
+const unsupportedRoute: Middleware = async (ctx: Context, next: Next) => {
+  await next();
+
+  const status = ctx.response.status;
+  switch (status) {
+    case Status.NotFound:
+      ctx.response.body = { status, msg: "not found" };
+      break;
+    case Status.MethodNotAllowed:
+      ctx.response.body = { status, msg: "method not allowed" };
+      break;
+  }
+};
+
+const logger: Middleware = async (ctx: Context, next: Next) => {
   await next();
 
   const reqTime = ctx.response.headers.get("X-Response-Time");
@@ -49,4 +63,6 @@ export async function logger(ctx: Context, next: Next): Promise<void> {
   console.log(
     `${reqId} ${ctx.request.method} ${ctx.request.url} - status: ${status} (${reqTime})`,
   );
-}
+};
+
+export { error, logger, requestId, timing, unsupportedRoute };

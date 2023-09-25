@@ -1,0 +1,26 @@
+# Docker compose file for starting a dev environment of the full fensak application. Depends on db.docker-compose.yml to
+# provide the database.
+version: "3.9"
+
+services:
+  web:
+    image: denoland/deno:distroless-1.37.0
+    working_dir: /code
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    volumes:
+      - type: bind
+        source: "${FSK_CODE_ROOT_PATH:-../..}"
+        target: /code
+      - "denocache:/deno-dir"
+    command:
+      - "run"
+      - "--allow-net"
+      - "--allow-env"
+      - "--allow-read"
+      - "main.ts"
+    depends_on:
+      faunasetup:
+        condition: service_completed_successfully

@@ -1,4 +1,4 @@
-# Docker compose file for all data storage services used by IllumiTacit. This also applies all the liquibase changesets
+# Docker compose file for all data storage services used by Fensak. This also applies all the liquibase changesets
 # to the main database. Combine with the app.docker-compose.yml file to get a dev environment setup.
 version: "3.9"
 
@@ -36,4 +36,4 @@ services:
 
 volumes:
   faunadb:
-  nodemodules:
+  denocache:

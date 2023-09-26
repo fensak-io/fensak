@@ -1,11 +1,17 @@
 import { assertEquals, assertNotEquals } from "../test_deps.ts";
-import { Octokit } from "../deps.ts";
+import { config, Octokit } from "../deps.ts";
 
 import { IPatch, LineOp, PatchOp } from "./patch_types.ts";
 import { patchFromGitHubPullRequest } from "./from_github.ts";
 import type { IGitHubRepository } from "./from_github.ts";
 
-const octokit = new Octokit();
+const token = config.get("github.apiToken");
+let octokit: Octokit;
+if (token) {
+  octokit = new Octokit({ auth: token });
+} else {
+  octokit = new Octokit();
+}
 const testRepo: IGitHubRepository = {
   owner: "fensak-test",
   name: "test-fensak-rules-engine",

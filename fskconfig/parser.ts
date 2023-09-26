@@ -1,7 +1,8 @@
 import { Ajv, path, toml, yaml } from "../deps.ts";
 
-import type { OrgConfig } from "./types.ts";
 import { RuleFnSourceLang } from "../udr/mod.ts";
+
+import type { OrgConfig } from "./types.ts";
 
 const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
 const cfgSchemaTxt = await Deno.readTextFile(
@@ -63,7 +64,7 @@ export function parseConfigFile(
   return typedData;
 }
 
-function getRuleLang(ruleFname: string): RuleFnSourceLang {
+export function getRuleLang(ruleFname: string): RuleFnSourceLang {
   const ext = path.extname(ruleFname);
   switch (ext) {
     default:

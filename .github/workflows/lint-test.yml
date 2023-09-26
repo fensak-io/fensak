@@ -33,6 +33,7 @@ jobs:
         run: deno test --allow-net --allow-env --allow-read --reporter=junit --junit-path=./report.xml
         env:
           FENSAK_GITHUB_WEBHOOK_SECRET: ${{ secrets.FENSAK_GITHUB_WEBHOOK_SECRET }}
+          FENSAK_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: report
         uses: mikepenz/action-junit-report@75b84e78b3f0aaea7ed7cf8d1d100d7f97f963ec # v4.0.0

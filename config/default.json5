@@ -8,6 +8,9 @@
   github: {
     // The secret string used to authenticate GitHub webhook requests coming in.
     webhookSecret: "",
+    // An optional API token to use to authenticate GitHub API requests. Only used in dev and test mode (in production,
+    // the GitHub app configurations are used).
+    apiToken: "",
   },
 
   /**

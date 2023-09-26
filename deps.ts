@@ -15,13 +15,15 @@ export {
   Status,
 } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export type { Middleware, Next } from "https://deno.land/x/oak@v12.6.1/mod.ts";
-export { Octokit } from "npm:@octokit/rest@^20.0.0";
+export { Octokit } from "npm:@octokit/rest@^20.0.2";
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 import config from "npm:config@^3.3.9";
-import babel from "npm:@babel/core@^7.22.10";
-import babelPresetEnv from "npm:@babel/preset-env@^7.22.10";
-import babelPresetTypescript from "npm:@babel/preset-typescript@^7.22.5";
+import babel from "npm:@babel/core@^7.23.0";
+import babelPresetEnv from "npm:@babel/preset-env@^7.22.20";
+import babelPresetTypescript from "npm:@babel/preset-typescript@^7.23.0";
 export { babel, babelPresetEnv, babelPresetTypescript, config };
+// Must use esm.sh version for auth-app. See https://github.com/octokit/auth-app.js/issues/465
+export { createAppAuth as octokitCreateAppAuth } from "https://esm.sh/@octokit/auth-app@6.0.1";
 
 // See https://github.com/ajv-validator/ajv/issues/2132
 import _Ajv from "npm:ajv@^8.12.0";

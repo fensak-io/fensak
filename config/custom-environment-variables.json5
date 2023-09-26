@@ -1,6 +1,13 @@
 {
   github: {
     webhookSecret: "FENSAK_GITHUB_WEBHOOK_SECRET",
+    app: {
+      appID: {
+        "__name": "FENSAK_GITHUB_APP_ID",
+        "__format": "number",
+      },
+      privateKey: "FENSAK_GITHUB_APP_PRIVATE_KEY",
+    },
     apiToken: "FENSAK_GITHUB_TOKEN",
   },
   faunadb: {

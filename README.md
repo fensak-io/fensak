@@ -15,11 +15,22 @@ For examples of user defined rules including how to test them using functions in
 
 ## LICENSE
 
-This library is distributed under the
-[Business Source License 1.1](https://mariadb.com/bsl-faq-adopting/) with no
-Additional Use Grant. Refer to the [LICENSE](./LICENSE) file for the full
-parameters of the license.
+`SPDX-License-Identifier: BUSL-1.1 OR AGPL-3.0-or-later`
 
-This means that you are free to use this for development, testing, or any other
-non-production usage, until the specified change date at which point you can use
-it under the terms of the Apache 2.0 License.
+Fensak is dual-licensed under the
+[Business Source License 1.1](https://mariadb.com/bsl-faq-adopting/) (with no
+Additional Use Grant) and [AGPL 3.0](https://www.gnu.org/licenses/agpl-3.0.en.html) (or any later version). Refer to the
+corresponding LICENSE files for the full parameters of either license:
+
+- [LICENSE.BUSL-1.1](/LICENSE.BUSL-1.1)
+- [LICENSE.AGPL-3.0-or-later](/LICENSE.AGPL-3.0-or-later)
+
+Dual licensing means that you can use the code under the terms of **either** license.
+
+For example, if you are using this to test your rules functions and you do not want to be bound by the terms of the AGPL
+license (and thus be forced to release the source code of your rules), you can license the Fensak testing code under the
+BUSL 1.1 license.
+
+On the other hand, if you wish to self host an instance of Fensak for internal use, then you can license Fensak under
+the terms of the AGPL 3.0 (or later) license. You can not self host an instance of Fensak under the BUSL 1.1 license
+since it does not allow any additional use grant for production usage.

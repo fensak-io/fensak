@@ -5,7 +5,7 @@ GitOps workflows without any compromises.
 
 This repository has two top level sources:
 
-- `app.ts`: This contains the entry point for the `fensak` service.
+- `main.ts`: This contains the entry point for the `fensak` service.
 - `mod.ts`: This contains the entry point for the `fensak` library, which contains
   useful functions for testing user defined scripts.
 

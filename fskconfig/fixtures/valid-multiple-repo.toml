@@ -1,0 +1,12 @@
+[repos]
+
+[repos.test-fensak-rules-engine]
+ruleFile = "app_deploy_rule.ts"
+ruleLang = "ts"
+
+[repos.test-fensak-config]
+ruleFile = "config_change_rule.js"
+ruleLang = "es5"
+
+[repos.test-fensak]
+ruleFile = "app_version.js"

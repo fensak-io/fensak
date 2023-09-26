@@ -1,6 +1,6 @@
 import { Context, Status } from "../deps.ts";
 import type { Middleware, Next } from "../deps.ts";
-import { githubWebhooks } from "../ghevent/mod.ts";
+import { githubWebhooks } from "../ghauth/mod.ts";
 
 const assertGitHubWebhook: Middleware = async (ctx: Context, next: Next) => {
   const ghSig = ctx.request.headers.get("X-Hub-Signature-256");

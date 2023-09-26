@@ -8,6 +8,22 @@
   github: {
     // The secret string used to authenticate GitHub webhook requests coming in.
     webhookSecret: "",
+
+    // Authentication parameters for authenticating as a GitHub App.
+    app: {
+      // The ID of the GitHub App.
+      appID: 0,
+      // The base64 encoded private key for the GitHub App.
+      //
+      // IMPORTANT NOTE
+      // The private key must be in PKCS8 format for Deno to properly parse it. GitHub generates the key in PKCS1 format,
+      // which means that it needs to be reconfigured into PKCS8. Use the following command to convert the downloaded key:
+      //
+      // openssl pkcs8 -topk8 -inform PEM -outform PEM -in fensak-test.DATE.private-key.pem -out fensak-test.pem -nocrypt
+      //
+      privateKey: "",
+    },
+
     // An optional API token to use to authenticate GitHub API requests. Only used in dev and test mode (in production,
     // the GitHub app configurations are used).
     apiToken: "",

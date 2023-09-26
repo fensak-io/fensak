@@ -1,24 +1,21 @@
 import { assertEquals, assertNotEquals } from "../test_deps.ts";
-import { config, Octokit } from "../deps.ts";
+import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 
 import { IPatch, LineOp, PatchOp } from "./patch_types.ts";
 import { patchFromGitHubPullRequest } from "./from_github.ts";
 import type { IGitHubRepository } from "./from_github.ts";
 
-const token = config.get("github.apiToken");
-let octokit: Octokit;
-if (token) {
-  octokit = new Octokit({ auth: token });
-} else {
-  octokit = new Octokit();
-}
 const testRepo: IGitHubRepository = {
   owner: "fensak-test",
   name: "test-fensak-rules-engine",
 };
 
 Deno.test("single file with modification", async () => {
-  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 1);
+  const patches = await patchFromGitHubPullRequest(
+    octokitRestTestClt,
+    testRepo,
+    1,
+  );
   const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");
@@ -56,7 +53,11 @@ Deno.test("single file with modification", async () => {
 });
 
 Deno.test("single file with multiple modifications", async () => {
-  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 2);
+  const patches = await patchFromGitHubPullRequest(
+    octokitRestTestClt,
+    testRepo,
+    2,
+  );
   const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");
@@ -94,7 +95,11 @@ Deno.test("single file with multiple modifications", async () => {
 });
 
 Deno.test("multiple file with modifications", async () => {
-  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 24);
+  const patches = await patchFromGitHubPullRequest(
+    octokitRestTestClt,
+    testRepo,
+    24,
+  );
   const pl = patches.patchList;
   assertEquals(pl.length, 2);
 
@@ -177,7 +182,11 @@ Deno.test("multiple file with modifications", async () => {
 });
 
 Deno.test("new file added", async () => {
-  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 21);
+  const patches = await patchFromGitHubPullRequest(
+    octokitRestTestClt,
+    testRepo,
+    21,
+  );
   const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "newconfig.json");
@@ -207,7 +216,11 @@ Deno.test("new file added", async () => {
 });
 
 Deno.test("file removed", async () => {
-  const patches = await patchFromGitHubPullRequest(octokit, testRepo, 22);
+  const patches = await patchFromGitHubPullRequest(
+    octokitRestTestClt,
+    testRepo,
+    22,
+  );
   const pl = patches.patchList;
   assertEquals(pl.length, 1);
   assertEquals(pl[0].path, "appversions.json");

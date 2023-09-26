@@ -1,20 +1,12 @@
 import { assert, assertEquals } from "../test_deps.ts";
-import { config, Octokit } from "../deps.ts";
+import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 
 import { RuleFnSourceLang } from "../udr/mod.ts";
 
 import { loadConfigFromGitHub } from "./loader_github.ts";
 
-const token = config.get("github.apiToken");
-let octokit: Octokit;
-if (token) {
-  octokit = new Octokit({ auth: token });
-} else {
-  octokit = new Octokit();
-}
-
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
-  const cfg = await loadConfigFromGitHub(octokit, "fensak-test");
+  const cfg = await loadConfigFromGitHub(octokitRestTestClt, "fensak-test");
   assertEquals(cfg.gitSHA, "4c35fe73411fd4a57cd45b0621d63638536425fc");
   assertEquals(cfg.orgConfig, {
     repos: {

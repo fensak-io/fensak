@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/fensak-io/fensak/ghconfig/schema.json",
+  "title": "OrgFensakConfig",
+  "description": "The configuration for Fensak pertaining to your GitHub Organization.",
+  "type": "object",
+  "properties": {
+    "repos": {
+      "description": "The mapping of repo names (scoped to the org) to the corresponding repository configuration.",
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "description": "The configuration for a specific repository.",
+          "type": "object",
+          "properties": {
+            "ruleFile": {
+              "description": "The path (relative to the repo root) to the file to use for the rules source.",
+              "type": "string"
+            },
+            "ruleLang": {
+              "description": "The language that the rules source is written in. If omitted, the language is derived from the source file extension. Note that we will always assume ES6 for js files.",
+              "enum": ["es5", "es6", "ts"]
+            }
+          },
+          "required": ["ruleFile"]
+        }
+      },
+      "minProperties": 1
+    }
+  },
+  "required": ["repos"]
+}

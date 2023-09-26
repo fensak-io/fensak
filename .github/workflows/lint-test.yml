@@ -33,6 +33,9 @@ jobs:
         run: deno test --allow-net --allow-env --allow-read --reporter=junit --junit-path=./report.xml
         env:
           FENSAK_GITHUB_WEBHOOK_SECRET: ${{ secrets.FENSAK_GITHUB_WEBHOOK_SECRET }}
+          FENSAK_GITHUB_APP_ID: ${{ secrets.FENSAK_GITHUB_APP_ID }}
+          FENSAK_GITHUB_APP_PRIVATE_KEY: ${{ secrets.FENSAK_GITHUB_APP_PRIVATE_KEY }}
+          TEST_FENSAK_GITHUB_INSTALLATION_ID: ${{ secrets.TEST_FENSAK_GITHUB_INSTALLATION_ID }}
           FENSAK_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: report

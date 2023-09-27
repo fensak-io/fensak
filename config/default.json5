@@ -28,16 +28,4 @@
     // the GitHub app configurations are used).
     apiToken: "",
   },
-
-  /**
-   * Settings/Secrets related to interacting with FaunaDB.
-   */
-  faunadb: {
-    // The name of the Fauna DB to connect to.
-    name: "fensak",
-    // The web server endpoint where the Fauna DB can be accessed.
-    endpoint: "http://fauna:8443",
-    // The API key to auth and access the Fauna DB.
-    apiKey: "",
-  }
 }

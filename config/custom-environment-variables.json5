@@ -10,8 +10,4 @@
     },
     apiToken: "FENSAK_GITHUB_TOKEN",
   },
-  faunadb: {
-    name: "FENSAK_FAUNADB_NAME",
-    apiKey: "FENSAK_FAUNADB_API_KEY",
-  }
 }

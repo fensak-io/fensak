@@ -1,4 +1,4 @@
-import { base64, Octokit, path } from "../deps.ts";
+import { base64, config, Octokit, path } from "../deps.ts";
 
 import { compileRuleFn, RuleFnSourceLang } from "../udr/mod.ts";
 
@@ -6,10 +6,22 @@ import type { ComputedFensakConfig, OrgConfig, RuleLookup } from "./types.ts";
 import { getRuleLang, parseConfigFile } from "./parser.ts";
 
 const fensakCfgRepoName = ".fensak";
+const configFileSizeLimit = config.get("configFileSizeLimit");
+const rulesFileSizeLimit = config.get("rulesFileSizeLimit");
+
+interface ITreeFile {
+  path: string;
+  sha: string;
+  size: number;
+  mode?: string;
+  type?: string;
+  url?: string;
+}
 
 interface IGitFileInfo {
   filename: string;
   gitSHA: string;
+  size: number;
 }
 
 /**
@@ -38,11 +50,16 @@ export async function loadConfigFromGitHub(
   // TODO
   // Load from cache if the SHA is the same.
 
-  const fileSHALookup = await getFileSHALookup(clt, owner, headSHA);
-  const cfgFinfo = getConfigFinfo(fileSHALookup);
+  const fileLookup = await getFileLookup(clt, owner, headSHA);
+  const cfgFinfo = getConfigFinfo(fileLookup);
   if (!cfgFinfo) {
     throw new Error(
       `could not find fensak config file in the '${owner}/.fensak' repo`,
+    );
+  }
+  if (cfgFinfo.size > configFileSizeLimit) {
+    throw new Error(
+      `the config file ${cfgFinfo.filename} is too large (limit 1MB)`,
     );
   }
 
@@ -52,7 +69,7 @@ export async function loadConfigFromGitHub(
     clt,
     owner,
     orgCfg,
-    fileSHALookup,
+    fileLookup,
     headSHA,
   );
 
@@ -64,25 +81,32 @@ export async function loadConfigFromGitHub(
 }
 
 /**
- * Create a lookup table that maps file paths in a repository tree to the file sha.
+ * Create a lookup table that maps file paths in a repository tree to the file metadata.
  */
-async function getFileSHALookup(
+async function getFileLookup(
   clt: Octokit,
   owner: string,
   sha: string,
-): Promise<Record<string, string>> {
+): Promise<Record<string, ITreeFile>> {
   const { data: tree } = await clt.git.getTree({
     owner: owner,
     repo: fensakCfgRepoName,
     tree_sha: sha,
     recursive: "true",
   });
-  const out: Record<string, string> = {};
+  const out: Record<string, ITreeFile> = {};
   for (const f of tree.tree) {
-    if (!f.path || !f.sha) {
+    if (!f.path || !f.sha || !f.size) {
       continue;
     }
-    out[f.path] = f.sha;
+    out[f.path] = {
+      path: f.path,
+      sha: f.sha,
+      size: f.size,
+      mode: f.mode,
+      type: f.type,
+      url: f.url,
+    };
   }
   return out;
 }
@@ -91,16 +115,17 @@ async function getFileSHALookup(
  * Get config file name and sha in the repo by walking the repository tree.
  */
 function getConfigFinfo(
-  repoTreeLookup: Record<string, string>,
+  repoTreeLookup: Record<string, ITreeFile>,
 ): IGitFileInfo | null {
   for (const fpath in repoTreeLookup) {
     const fpathBase = path.basename(fpath);
     const fpathExt = path.extname(fpathBase);
     if (fpathBase === `fensak${fpathExt}`) {
-      const fsha = repoTreeLookup[fpath];
+      const finfo = repoTreeLookup[fpath];
       return {
         filename: fpath,
-        gitSHA: fsha,
+        gitSHA: finfo.sha,
+        size: finfo.size,
       };
     }
   }
@@ -137,7 +162,7 @@ async function loadRuleFiles(
   clt: Octokit,
   owner: string,
   orgCfg: OrgConfig,
-  fileSHALookup: Record<string, string>,
+  fileLookup: Record<string, ITreeFile>,
   repoSHA: string,
 ): Promise<RuleLookup> {
   const ruleFilesToLoad: Record<string, RuleFnSourceLang> = {};
@@ -158,10 +183,15 @@ async function loadRuleFiles(
 
   const out: RuleLookup = {};
   for (const fname in ruleFilesToLoad) {
-    const sha = fileSHALookup[fname];
-    if (!sha) {
+    const finfo = fileLookup[fname];
+    if (!finfo) {
       throw new Error(
         `could not find referenced rule file '${fname}' in '.fensak' repository`,
+      );
+    }
+    if (finfo.size > rulesFileSizeLimit) {
+      throw new Error(
+        `rules file ${fname} is too large (limit 512kb)`,
       );
     }
 
@@ -172,12 +202,13 @@ async function loadRuleFiles(
     // rate limiting, so we have to resort to a lousy loop here.
     const contents = await loadFileContents(clt, owner, {
       filename: fname,
-      gitSHA: sha,
+      gitSHA: finfo.sha,
+      size: finfo.size,
     });
     const compiledContents = compileRuleFn(contents, ruleLang);
 
     out[fname] = {
-      sourceGitHash: sha,
+      sourceGitHash: finfo.sha,
       compiledRule: compiledContents,
       fileURL: new URL(
         `https://github.com/${owner}/${fensakCfgRepoName}/blob/${repoSHA}/${fname}`,

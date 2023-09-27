@@ -2,6 +2,12 @@
 // Many of these are secrets, and thus are sourced from environment variables
 // (see ./custom-environment-variables.json5).
 {
+  // The maximum size of config files that can be accepted (in bytes).
+  configFileSizeLimit: 1024000,
+
+  // The maximum size of rules files that can be accepted (in bytes).
+  rulesFileSizeLimit: 512000,
+
   /**
    * Settings/Secrets related to interacting with GitHub.
    */

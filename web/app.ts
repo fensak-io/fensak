@@ -1,5 +1,8 @@
-import { Application, Context, Router } from "../deps.ts";
+import { Application, Router } from "../deps.ts";
+
 import * as middlewares from "../middlewares/mod.ts";
+
+import { attachRoutes } from "./routes.ts";
 
 export async function startWebServer(): Promise<void> {
   const app = new Application();
@@ -11,10 +14,7 @@ export async function startWebServer(): Promise<void> {
   app.use(middlewares.unsupportedRoute);
 
   const router = new Router();
-  router
-    .post("/hooks/gh", middlewares.assertGitHubWebhook, (ctx: Context) => {
-      ctx.response.body = "Hello World!";
-    });
+  attachRoutes(router);
   app.use(router.routes());
   app.use(router.allowedMethods());
 

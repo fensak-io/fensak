@@ -2,7 +2,10 @@ import { Context, Status } from "../deps.ts";
 import type { Middleware, Next } from "../deps.ts";
 import { githubWebhooks } from "../ghauth/mod.ts";
 
-const assertGitHubWebhook: Middleware = async (ctx: Context, next: Next) => {
+const assertGitHubWebhook: Middleware = async (
+  ctx: Context,
+  next: Next,
+): Promise<void> => {
   const ghSig = ctx.request.headers.get("X-Hub-Signature-256");
   if (ghSig == null) {
     returnInvalidGHHook(ctx);
@@ -20,11 +23,11 @@ const assertGitHubWebhook: Middleware = async (ctx: Context, next: Next) => {
   await next();
 };
 
-function returnInvalidGHHook(ctx: Context) {
+function returnInvalidGHHook(ctx: Context): void {
   const respStatus = Status.Forbidden;
   ctx.response.status = respStatus;
   ctx.response.body = {
-    respStatus,
+    status: respStatus,
     msg: "Could not verify github signature.",
   };
 }

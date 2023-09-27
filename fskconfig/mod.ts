@@ -5,3 +5,4 @@
  */
 export type { OrgConfig, RepoConfig } from "./types.ts";
 export * from "./parser.ts";
+export * from "./loader_github.ts";

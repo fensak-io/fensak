@@ -3,7 +3,7 @@
     "test-fensak-rules-engine": {
       "ruleFile": "app_deploy_rule.ts",
       "ruleLang": "ts",
-      "requiredApprovals": 2
+      "requiredApprovals": -1
     }
   }
 }

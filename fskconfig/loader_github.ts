@@ -48,7 +48,13 @@ export async function loadConfigFromGitHub(
 
   const orgCfgContents = await loadFileContents(clt, owner, cfgFinfo);
   const orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
-  const ruleLookup = await loadRuleFiles(clt, owner, orgCfg, fileSHALookup);
+  const ruleLookup = await loadRuleFiles(
+    clt,
+    owner,
+    orgCfg,
+    fileSHALookup,
+    headSHA,
+  );
 
   return {
     orgConfig: orgCfg,
@@ -132,6 +138,7 @@ async function loadRuleFiles(
   owner: string,
   orgCfg: OrgConfig,
   fileSHALookup: Record<string, string>,
+  repoSHA: string,
 ): Promise<RuleLookup> {
   const ruleFilesToLoad: Record<string, RuleFnSourceLang> = {};
   for (const repoName in orgCfg.repos) {
@@ -172,6 +179,9 @@ async function loadRuleFiles(
     out[fname] = {
       sourceGitHash: sha,
       compiledRule: compiledContents,
+      fileURL: new URL(
+        `https://github.com/${owner}/${fensakCfgRepoName}/blob/${repoSHA}/${fname}`,
+      ),
     };
   }
   return out;

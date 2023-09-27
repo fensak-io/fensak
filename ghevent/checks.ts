@@ -1,6 +1,9 @@
 import { Octokit } from "../deps.ts";
 
+import { IRuleLogEntry } from "../udr/mod.ts";
+
 const checkName = "smart review";
+const checkTitle = "Fensak smart review";
 
 export async function initializeCheck(
   clt: Octokit,
@@ -24,6 +27,8 @@ export async function completeCheck(
   repo: string,
   checkID: number,
   conclusion: "success" | "action_required" | "failed",
+  summary: string,
+  details: string,
 ): Promise<void> {
   await clt.checks.update({
     owner: owner,
@@ -32,5 +37,40 @@ export async function completeCheck(
     check_run_id: checkID,
     status: "completed",
     conclusion: conclusion,
+    output: {
+      title: checkTitle,
+      summary: summary,
+      text: details,
+    },
   });
+}
+
+export function formatCheckOutputText(
+  pass: boolean,
+  reason: string,
+  logEntries: IRuleLogEntry[],
+): [string, string] {
+  const outputLines = [];
+
+  let summary = "";
+  if (pass) {
+    summary = "This Pull Request passed the review.";
+  } else {
+    summary = "Further action is required on this Pull Request.";
+  }
+
+  outputLines.push(reason);
+  outputLines.push("");
+
+  if (logEntries.length > 0) {
+    outputLines.push("## Rule function logs");
+    outputLines.push("```");
+    for (const l of logEntries) {
+      outputLines.push(`[${l.level}] ${l.msg}`);
+    }
+    outputLines.push("```");
+    outputLines.push("");
+  }
+
+  return [summary, outputLines.join("\n")];
 }

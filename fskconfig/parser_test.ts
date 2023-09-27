@@ -17,6 +17,22 @@ Deno.test("parseConfigFile rejects invalid config", async () => {
   );
 });
 
+Deno.test("parseConfigFile rejects invalid requiredApprovals", async () => {
+  const fixtureInvalidReqAppTxt = await Deno.readTextFile(
+    path.join(__dirname, "fixtures", "invalid-required-approvals.json"),
+  );
+  assertThrows(
+    () => {
+      parseConfigFile(
+        "invalid-required-approvals.json",
+        fixtureInvalidReqAppTxt,
+      );
+    },
+    Error,
+    "config file invalid-required-approvals.json does not match expected schema",
+  );
+});
+
 Deno.test("parseConfigFile single repo config", async () => {
   const fixtureFname = "valid-single-repo.json";
   const contents = await Deno.readTextFile(
@@ -28,6 +44,7 @@ Deno.test("parseConfigFile single repo config", async () => {
       "test-fensak-rules-engine": {
         ruleFile: "app_deploy_rule.ts",
         ruleLang: RuleFnSourceLang.Typescript,
+        requiredApprovals: 2,
       },
     },
   });
@@ -53,14 +70,17 @@ Deno.test("parseConfigFile multi repo config (different formats)", async (t) => 
             "test-fensak-rules-engine": {
               ruleFile: "app_deploy_rule.ts",
               ruleLang: RuleFnSourceLang.Typescript,
+              requiredApprovals: 1,
             },
             "test-fensak-config": {
               ruleFile: "config_change_rule.js",
               ruleLang: RuleFnSourceLang.ES5,
+              requiredApprovals: 1,
             },
             "test-fensak": {
               ruleFile: "app_version.js",
               ruleLang: RuleFnSourceLang.ES6,
+              requiredApprovals: 1,
             },
           },
         });

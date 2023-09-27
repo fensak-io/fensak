@@ -20,6 +20,11 @@
             "ruleLang": {
               "description": "The language that the rules source is written in. If omitted, the language is derived from the source file extension. Note that we will always assume ES6 for js files.",
               "enum": ["es5", "es6", "ts"]
+            },
+            "requiredApprovals": {
+              "description": "The number of unique approvals from users with write access that are required to pass the check when the auto-approve rule fails. If omitted, defaults to 1.",
+              "type": "integer",
+              "minimum": 1
             }
           },
           "required": ["ruleFile"]

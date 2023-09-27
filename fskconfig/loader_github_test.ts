@@ -13,10 +13,12 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
       "test-github-webhooks": {
         ruleFile: "subfolder/allow_readme_changes.js",
         ruleLang: RuleFnSourceLang.ES6,
+        requiredApprovals: 1,
       },
       "test-fensak-rules-engine": {
         ruleFile: "app_deploy_rule.ts",
         ruleLang: RuleFnSourceLang.Typescript,
+        requiredApprovals: 1,
       },
     },
   });

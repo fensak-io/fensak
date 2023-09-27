@@ -20,6 +20,7 @@ export { Octokit } from "npm:@octokit/rest@^20.0.2";
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 export type {
   PullRequestEvent as GitHubPullRequestEvent,
+  PullRequestOpenedEvent as GitHubPullRequestOpenedEvent,
   PullRequestSynchronizeEvent as GitHubPullRequestSynchronizeEvent,
   WebhookEvent as GitHubWebhookEvent,
   WebhookEventName as GitHubWebhookEventName,

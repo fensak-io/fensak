@@ -29,3 +29,10 @@ export async function getGitHubOrg(orgName: string): Promise<GitHubOrg> {
   const entry = await mainKV.get([TableNames.GitHubOrg, orgName]);
   return entry.value as GitHubOrg;
 }
+
+/**
+ * Loads the test GitHub Org into the KV store. This is primarily used for dev purposes.
+ */
+export async function loadTestGitHubOrg(instID: number) {
+  await storeGitHubOrg({ name: "fensak-test", installationID: instID });
+}

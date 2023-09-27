@@ -53,11 +53,16 @@ export function parseConfigFile(
   }
   const typedData: OrgConfig = data as OrgConfig;
 
-  // set the repoLang based on the filename extension if any entry is missing it.
+  // Configure defaults:
+  // - set the repoLang based on the filename extension if any entry is missing it.
+  // - set the requiredApprovals to 1 if it is unset.
   for (const repoName in typedData.repos) {
     const cfg = typedData.repos[repoName];
     if (!cfg.ruleLang) {
       typedData.repos[repoName].ruleLang = getRuleLang(cfg.ruleFile);
+    }
+    if (!cfg.requiredApprovals) {
+      typedData.repos[repoName].requiredApprovals = 1;
     }
   }
 

@@ -1,5 +1,5 @@
 import { Interpreter, Octokit } from "../deps.ts";
-import { IPatch, SourcePlatform } from "../patch/mod.ts";
+import { IPatch } from "../patch/mod.ts";
 
 // Max time in milliseconds for the user defined rule to run. Any UDR functions that take longer than this will throw an error.
 const maxUDRRuntime = 5000;
@@ -39,7 +39,7 @@ export enum RuleLogMode {
  * @property fileFetchClients The authenticated API clients to use for fetching the files.
  */
 export interface IRuleInterpreterOpts {
-  fileFetchMap?: Record<SourcePlatform, Record<string, URL>>;
+  fileFetchMap?: Record<string, Record<string, URL>>;
   fileFetchClients?: IFileFetchClients;
   logMode?: RuleLogMode;
 }

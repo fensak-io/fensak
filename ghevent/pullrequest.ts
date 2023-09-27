@@ -1,5 +1,6 @@
 import type {
   GitHubPullRequestEvent,
+  GitHubPullRequestOpenedEvent,
   GitHubPullRequestSynchronizeEvent,
 } from "../deps.ts";
 
@@ -28,12 +29,18 @@ export async function onPullRequest(
         payload as GitHubPullRequestSynchronizeEvent,
       );
       return;
+
+    case "opened":
+      await onPullRequestSynchronize(
+        requestID,
+        payload as GitHubPullRequestOpenedEvent,
+      );
   }
 }
 
 async function onPullRequestSynchronize(
   requestID: string,
-  payload: GitHubPullRequestSynchronizeEvent,
+  payload: GitHubPullRequestSynchronizeEvent | GitHubPullRequestOpenedEvent,
 ): Promise<void> {
   if (!payload.organization) {
     console.warn(

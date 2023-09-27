@@ -28,6 +28,7 @@ services:
       - "FENSAK_GITHUB_WEBHOOK_SECRET"
       - "FENSAK_GITHUB_APP_ID"
       - "FENSAK_GITHUB_APP_PRIVATE_KEY"
+      - "TEST_FENSAK_GITHUB_INSTALLATION_ID"
 
 volumes:
   denocache:

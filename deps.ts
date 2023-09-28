@@ -27,8 +27,15 @@ export type {
 import config from "npm:config@^3.3.9";
 import babel from "npm:@babel/core@^7.23.0";
 import babelPresetEnv from "npm:@babel/preset-env@^7.22.20";
+import babelPresetMinify from "npm:babel-preset-minify@^0.5.2";
 import babelPresetTypescript from "npm:@babel/preset-typescript@^7.23.0";
-export { babel, babelPresetEnv, babelPresetTypescript, config };
+export {
+  babel,
+  babelPresetEnv,
+  babelPresetMinify,
+  babelPresetTypescript,
+  config,
+};
 // Must use esm.sh version for auth-app. See https://github.com/octokit/auth-app.js/issues/465
 export { createAppAuth as octokitCreateAppAuth } from "https://esm.sh/@octokit/auth-app@6.0.1";
 

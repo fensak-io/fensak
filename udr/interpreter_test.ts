@@ -25,6 +25,23 @@ Deno.test("sanity check", async () => {
   assert(result.approve);
 });
 
+Deno.test("ES5 minify", async () => {
+  const rawRuleFn = `function main(inp) {
+  return inp.length === 1;
+}
+`;
+  const ruleFn = compileRuleFn(rawRuleFn, RuleFnSourceLang.ES5);
+  const result = await runRule(ruleFn, [{
+    contentsID: "helloworld",
+    path: "foo.txt",
+    op: PatchOp.Insert,
+    additions: 0,
+    deletions: 0,
+    diff: [],
+  }]);
+  assert(result.approve);
+});
+
 Deno.test("ES6 support", async () => {
   const rawRuleFn = `function main(inp) {
   const l = inp.length;

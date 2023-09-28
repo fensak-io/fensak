@@ -3,6 +3,7 @@ import { base64, config, Octokit, path } from "../deps.ts";
 import { compileRuleFn, RuleFnSourceLang } from "../udr/mod.ts";
 import type {
   ComputedFensakConfig,
+  GitHubOrg,
   OrgConfig,
   RuleLookup,
 } from "../svcdata/mod.ts";
@@ -48,15 +49,15 @@ interface IGitFileInfo {
  */
 export async function loadConfigFromGitHub(
   clt: Octokit,
-  owner: string,
+  ghorg: GitHubOrg,
 ): Promise<ComputedFensakConfig | null> {
   const { data: repo } = await clt.repos.get({
-    owner: owner,
+    owner: ghorg.name,
     repo: fensakCfgRepoName,
   });
   const defaultBranch = repo.default_branch;
   const { data: ref } = await clt.git.getRef({
-    owner: owner,
+    owner: ghorg.name,
     repo: fensakCfgRepoName,
     ref: `heads/${defaultBranch}`,
   });
@@ -65,52 +66,59 @@ export async function loadConfigFromGitHub(
   // Check the cache to see if we already have a computed version for this SHA, and if so, return it.
   const maybeCfg = await getComputedFensakConfig(
     FensakConfigSource.GitHub,
-    owner,
+    ghorg.name,
   );
   if (maybeCfg && maybeCfg.gitSHA === headSHA) {
     return maybeCfg;
   }
 
   // Implement locking to ensure only one thread fetches from GitHub directly.
-  const lockKey = `fetch-from-github-${owner}`;
+  const lockKey = `fetch-from-github-${ghorg.name}`;
   const lock = await acquireLock(lockKey, cfgFetchLockExpiry);
   if (!lock) {
     return null;
   }
 
-  console.log(`Fetching configuration from GitHub for ${owner}`);
+  console.log(`Fetching configuration from GitHub for ${ghorg.name}`);
   try {
-    const cfg = await fetchAndParseConfigFromDotFensak(clt, owner, headSHA);
-    await storeComputedFensakConfig(FensakConfigSource.GitHub, owner, cfg);
+    const cfg = await fetchAndParseConfigFromDotFensak(clt, ghorg, headSHA);
+    await storeComputedFensakConfig(FensakConfigSource.GitHub, ghorg.name, cfg);
     return cfg;
   } finally {
     await releaseLock(lock);
   }
 }
 
-async function fetchAndParseConfigFromDotFensak(
+export async function fetchAndParseConfigFromDotFensak(
   clt: Octokit,
-  owner: string,
+  ghorg: GitHubOrg,
   headSHA: string,
 ): Promise<ComputedFensakConfig> {
-  const fileLookup = await getFileLookup(clt, owner, headSHA);
+  const fileLookup = await getFileLookup(clt, ghorg.name, headSHA);
   const cfgFinfo = getConfigFinfo(fileLookup);
   if (!cfgFinfo) {
     throw new Error(
-      `could not find fensak config file in the '${owner}/.fensak' repo`,
+      `could not find fensak config file in the '${ghorg.name}/.fensak' repo`,
     );
   }
   if (cfgFinfo.size > configFileSizeLimit) {
     throw new Error(
-      `the config file ${cfgFinfo.filename} is too large (limit 1MB)`,
+      `the config file ${cfgFinfo.filename} for org ${ghorg.name} is too large (limit 1MB)`,
     );
   }
 
-  const orgCfgContents = await loadFileContents(clt, owner, cfgFinfo);
+  const orgCfgContents = await loadFileContents(clt, ghorg.name, cfgFinfo);
   const orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
+  const repoCount = Object.keys(orgCfg.repos).length;
+  if (repoCount > ghorg.repoLimit) {
+    throw new Error(
+      `the config file for ${ghorg.name} exceeds the repo limit for the org (limit is ${ghorg.repoLimit})`,
+    );
+  }
+
   const ruleLookup = await loadRuleFiles(
     clt,
-    owner,
+    ghorg.name,
     orgCfg,
     fileLookup,
     headSHA,

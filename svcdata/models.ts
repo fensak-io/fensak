@@ -12,10 +12,12 @@ export interface Lock {
  * Represents a GitHub organization that has installed Fensak.
  * @property name The name (in slug form) of the GitHub organization.
  * @property installationID The installation ID of the GitHub app. Used for authentication.
+ * @property repoLimit The maximum number of repositories that can be configured with Fensak.
  */
 export interface GitHubOrg {
   name: string;
   installationID: number;
+  repoLimit: number;
 }
 
 /**

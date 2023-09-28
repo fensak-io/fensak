@@ -4,4 +4,4 @@
  * - `.fensak` repository in the GitHub Org.
  */
 export * from "./parser.ts";
-export * from "./loader_github.ts";
+export { loadConfigFromGitHub } from "./loader_github.ts";

@@ -1,14 +1,31 @@
-import { assert, assertEquals, assertExists } from "../test_deps.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertRejects,
+} from "../test_deps.ts";
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 
 import { RuleFnSourceLang } from "../udr/mod.ts";
+import type { GitHubOrg } from "../svcdata/mod.ts";
 
-import { loadConfigFromGitHub } from "./loader_github.ts";
+import {
+  fetchAndParseConfigFromDotFensak,
+  loadConfigFromGitHub,
+} from "./loader_github.ts";
+
+const expectedHeadSHA = "ace97c0856cac0b9c34812f9204ae3f03d870b3b";
 
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
-  const cfg = await loadConfigFromGitHub(octokitRestTestClt, "fensak-test");
+  const testOrg: GitHubOrg = {
+    name: "fensak-test",
+    installationID: 0,
+    repoLimit: 100,
+  };
+
+  const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
   assertExists(cfg);
-  assertEquals(cfg.gitSHA, "4c35fe73411fd4a57cd45b0621d63638536425fc");
+  assertEquals(cfg.gitSHA, expectedHeadSHA);
   assertEquals(cfg.orgConfig, {
     repos: {
       "test-github-webhooks": {
@@ -43,4 +60,23 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
 
   // TODO
   // add some basic testing for the compiled rule source
+});
+
+Deno.test("loadConfigFromGitHub checks repo limits", async () => {
+  const testOrg: GitHubOrg = {
+    name: "fensak-test",
+    installationID: 0,
+    repoLimit: 1,
+  };
+
+  await assertRejects(
+    () =>
+      fetchAndParseConfigFromDotFensak(
+        octokitRestTestClt,
+        testOrg,
+        expectedHeadSHA,
+      ),
+    Error,
+    "exceeds the repo limit for the org",
+  );
 });

@@ -126,5 +126,9 @@ export async function getComputedFensakConfig(
  * Loads the test GitHub Org into the KV store. This is primarily used for dev purposes.
  */
 export async function loadTestGitHubOrg(instID: number) {
-  await storeGitHubOrg({ name: "fensak-test", installationID: instID });
+  await storeGitHubOrg({
+    name: "fensak-test",
+    installationID: instID,
+    repoLimit: 100,
+  });
 }

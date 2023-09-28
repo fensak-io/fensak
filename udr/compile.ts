@@ -1,4 +1,13 @@
-import { babel, babelPresetEnv, babelPresetTypescript } from "../deps.ts";
+import {
+  babel,
+  babelPresetEnv,
+  babelPresetMinify,
+  babelPresetTypescript,
+} from "../deps.ts";
+
+const minifyCfg = {
+  "mangle": { "exclude": "main" },
+};
 
 /**
  * The source language of the rule function. Determines compiler settings to ensure it can be compiled down to ES5.
@@ -24,7 +33,11 @@ export function compileRuleFn(
   srcLang?: RuleFnSourceLang,
 ): string {
   if (!srcLang || srcLang == RuleFnSourceLang.ES5) {
-    return ruleFn;
+    const transformed = babel.transform(
+      ruleFn,
+      { presets: [[babelPresetMinify, minifyCfg]] },
+    );
+    return transformed.code;
   }
 
   if (srcLang == RuleFnSourceLang.Typescript) {
@@ -39,7 +52,16 @@ export function compileRuleFn(
   }
 
   // ruleFn is assumed to be in ES6 at this point.
-  return babel.transform(ruleFn, { presets: [babelPresetEnv] }).code;
+  const transformed = babel.transform(
+    ruleFn,
+    {
+      presets: [
+        babelPresetEnv,
+        [babelPresetMinify, minifyCfg],
+      ],
+    },
+  );
+  return transformed.code;
 }
 
 function removeCommentSurroundedKeyword(ruleFn: string): string {

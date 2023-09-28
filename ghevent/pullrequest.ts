@@ -8,7 +8,7 @@ import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { patchFromGitHubPullRequest, SourcePlatform } from "../patch/mod.ts";
 import { RuleLogMode, runRule } from "../udr/mod.ts";
-import { getGitHubOrg } from "../svcdata/mod.ts";
+import { mustGetGitHubOrg } from "../svcdata/mod.ts";
 
 import {
   completeCheck,
@@ -21,17 +21,19 @@ import {
  * Note that we only process synchronize and opened events that relate to PRs directly on the repository (no forks).
  * The idea is that Fensak only needs to reevaluate the rules when the code changes, or when there is a change in
  * approval.
+ *
+ * @return A boolean indicating whether the operation needs to be retried.
  */
 export async function onPullRequest(
   requestID: string,
   payload: GitHubPullRequestEvent | GitHubPullRequestReviewEvent,
-): Promise<void> {
+): Promise<boolean> {
   switch (payload.action) {
     default:
       console.debug(
         `[${requestID}] Discarding github pull request event ${payload.action}`,
       );
-      return;
+      return false;
 
     // Pull request events
     case "opened":
@@ -47,7 +49,7 @@ export async function onPullRequest(
         console.warn(
           `[${requestID}] No organization set for pull request event. Discarding.`,
         );
-        return;
+        return false;
       }
       if (
         payload.pull_request.head.repo &&
@@ -56,17 +58,16 @@ export async function onPullRequest(
         console.warn(
           `[${requestID}] Pull request opened from fork. Discarding.`,
         );
-        return;
+        return false;
       }
 
-      await runReviewRoutine(
+      return await runReviewRoutine(
         requestID,
         payload.organization.login,
         payload.repository.name,
         payload.pull_request.number,
         payload.pull_request.head.sha,
       );
-      return;
   }
 }
 
@@ -75,6 +76,8 @@ export async function onPullRequest(
  * This routine implements the core review logic for the PR, ensuring that it either:
  * - Passes the auto approval rule function.
  * - Has the required number of approvals.
+ *
+ * @return A boolean indicating whether the operation needs to be retried.
  */
 async function runReviewRoutine(
   requestID: string,
@@ -82,23 +85,32 @@ async function runReviewRoutine(
   repoName: string,
   prNum: number,
   headSHA: string,
-): Promise<void> {
-  const ghorg = await getGitHubOrg(owner);
+): Promise<boolean> {
+  const ghorg = await mustGetGitHubOrg(owner);
   const octokit = octokitFromInstallation(ghorg.installationID);
+
   const cfg = await loadConfigFromGitHub(octokit, ghorg.name);
+  if (!cfg) {
+    console.warn(
+      `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,
+    );
+    return true;
+  }
+
   const repoCfg = cfg.orgConfig.repos[repoName];
   if (!repoCfg) {
     console.debug(
       `[${requestID}] No rules configured for repository ${repoName}.`,
     );
-    return;
+    return false;
   }
+
   const ruleFn = cfg.ruleLookup[repoCfg.ruleFile];
   if (!ruleFn) {
     console.warn(
       `[${requestID}] Compiled rule function could not be found for repository ${repoName}.`,
     );
-    return;
+    return false;
   }
   const requiredApprovals = repoCfg.requiredApprovals || 1;
 
@@ -146,7 +158,7 @@ async function runReviewRoutine(
         summary,
         details,
       );
-      return;
+      return false;
     }
 
     // Failed auto-approval check, so fall back to checking for required approvals.
@@ -173,7 +185,7 @@ async function runReviewRoutine(
         summary,
         details,
       );
-      return;
+      return false;
     }
 
     // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
@@ -217,6 +229,8 @@ async function runReviewRoutine(
 
     throw err;
   }
+
+  return false;
 }
 
 async function numberApprovalsFromWriters(

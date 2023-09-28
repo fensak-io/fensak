@@ -4,3 +4,4 @@
  */
 export * from "./queue.ts";
 export * from "./store.ts";
+export * from "./models.ts";

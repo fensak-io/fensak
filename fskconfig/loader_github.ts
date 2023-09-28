@@ -1,10 +1,22 @@
 import { base64, config, Octokit, path } from "../deps.ts";
 
 import { compileRuleFn, RuleFnSourceLang } from "../udr/mod.ts";
+import type {
+  ComputedFensakConfig,
+  OrgConfig,
+  RuleLookup,
+} from "../svcdata/mod.ts";
+import {
+  acquireLock,
+  FensakConfigSource,
+  getComputedFensakConfig,
+  releaseLock,
+  storeComputedFensakConfig,
+} from "../svcdata/mod.ts";
 
-import type { ComputedFensakConfig, OrgConfig, RuleLookup } from "./types.ts";
 import { getRuleLang, parseConfigFile } from "./parser.ts";
 
+const cfgFetchLockExpiry = 600 * 1000; // 10 minutes
 const fensakCfgRepoName = ".fensak";
 const configFileSizeLimit = config.get("configFileSizeLimit");
 const rulesFileSizeLimit = config.get("rulesFileSizeLimit");
@@ -25,16 +37,19 @@ interface IGitFileInfo {
 }
 
 /**
- * Loads a Fensak configuration from GitHub. This looks up the configuration from the repository `.fensak` in the
+ * Loads a Fensak configuration from GitHub with caching. This will first look in the KV cache, and if it is available
+ * and current, return that. Otherwise, this looks up the configuration from the repository `.fensak` in the
  * organization.
+ * Note that only one active thread will fetch the config directly from GitHub to avoid hitting API rate limits.
  *
  * @param clt An authenticated Octokit instance.
  * @param owner The GitHub owner to load the config for.
+ * @return The computed Fensak config for the GitHub org. Returns null if another thread is fetching the config.
  */
 export async function loadConfigFromGitHub(
   clt: Octokit,
   owner: string,
-): Promise<ComputedFensakConfig> {
+): Promise<ComputedFensakConfig | null> {
   const { data: repo } = await clt.repos.get({
     owner: owner,
     repo: fensakCfgRepoName,
@@ -47,9 +62,37 @@ export async function loadConfigFromGitHub(
   });
   const headSHA = ref.object.sha;
 
-  // TODO
-  // Load from cache if the SHA is the same.
+  // Check the cache to see if we already have a computed version for this SHA, and if so, return it.
+  const maybeCfg = await getComputedFensakConfig(
+    FensakConfigSource.GitHub,
+    owner,
+  );
+  if (maybeCfg && maybeCfg.gitSHA === headSHA) {
+    return maybeCfg;
+  }
 
+  // Implement locking to ensure only one thread fetches from GitHub directly.
+  const lockKey = `fetch-from-github-${owner}`;
+  const lock = await acquireLock(lockKey, cfgFetchLockExpiry);
+  if (!lock) {
+    return null;
+  }
+
+  console.log(`Fetching configuration from GitHub for ${owner}`);
+  try {
+    const cfg = await fetchAndParseConfigFromDotFensak(clt, owner, headSHA);
+    await storeComputedFensakConfig(FensakConfigSource.GitHub, owner, cfg);
+    return cfg;
+  } finally {
+    await releaseLock(lock);
+  }
+}
+
+async function fetchAndParseConfigFromDotFensak(
+  clt: Octokit,
+  owner: string,
+  headSHA: string,
+): Promise<ComputedFensakConfig> {
   const fileLookup = await getFileLookup(clt, owner, headSHA);
   const cfgFinfo = getConfigFinfo(fileLookup);
   if (!cfgFinfo) {

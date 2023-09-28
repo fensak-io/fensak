@@ -1,8 +1,7 @@
 import { Ajv, path, toml, yaml } from "../deps.ts";
 
 import { RuleFnSourceLang } from "../udr/mod.ts";
-
-import type { OrgConfig } from "./types.ts";
+import type { OrgConfig } from "../svcdata/mod.ts";
 
 const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
 const cfgSchemaTxt = await Deno.readTextFile(

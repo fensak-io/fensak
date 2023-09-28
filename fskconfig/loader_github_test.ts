@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "../test_deps.ts";
+import { assert, assertEquals, assertExists } from "../test_deps.ts";
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 
 import { RuleFnSourceLang } from "../udr/mod.ts";
@@ -7,6 +7,7 @@ import { loadConfigFromGitHub } from "./loader_github.ts";
 
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   const cfg = await loadConfigFromGitHub(octokitRestTestClt, "fensak-test");
+  assertExists(cfg);
   assertEquals(cfg.gitSHA, "4c35fe73411fd4a57cd45b0621d63638536425fc");
   assertEquals(cfg.orgConfig, {
     repos: {

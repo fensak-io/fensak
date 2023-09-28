@@ -57,6 +57,13 @@ export function listenQueue(
  * Enqueue a message on the KV queue to be processed by a worker listening for events.
  * @param msg The message payload to be sent to the worker through the KV queue.
  */
-export async function enqueueMsg(msg: Message): Promise<void> {
-  await mainKV.enqueue(msg);
+export async function enqueueMsg(
+  msg: Message,
+  delayMS?: number,
+): Promise<void> {
+  if (delayMS) {
+    await mainKV.enqueue(msg, { delay: delayMS });
+  } else {
+    await mainKV.enqueue(msg);
+  }
 }

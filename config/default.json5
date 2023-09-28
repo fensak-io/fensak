@@ -8,6 +8,9 @@
   // The maximum size of rules files that can be accepted (in bytes).
   rulesFileSizeLimit: 512000,
 
+  // Default setting for the Organization repo limit (max number of repos that can be configured with rules).
+  defaultOrgRepoLimit: 100,
+
   /**
    * Settings/Secrets related to interacting with GitHub.
    */

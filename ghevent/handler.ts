@@ -1,4 +1,5 @@
 import {
+  GitHubInstallationEvent,
   GitHubPullRequestEvent,
   GitHubPullRequestReviewEvent,
 } from "../deps.ts";
@@ -6,6 +7,7 @@ import {
 import type { GitHubEventPayload } from "../svcdata/mod.ts";
 
 import { onPullRequest } from "./pullrequest.ts";
+import { onAppMgmt } from "./installation.ts";
 
 /**
  * Handles the given GitHub event.
@@ -24,6 +26,13 @@ export async function handleGitHubEvent(
         `[${msg.requestID}] Discarding github event ${msg.eventName}`,
       );
       return false;
+
+    case "installation":
+      await onAppMgmt(
+        msg.requestID,
+        msg.payload as GitHubInstallationEvent,
+      );
+      break;
 
     case "pull_request":
       retry = await onPullRequest(

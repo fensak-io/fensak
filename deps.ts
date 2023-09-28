@@ -19,6 +19,7 @@ export type { Middleware, Next } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export { Octokit } from "npm:@octokit/rest@^20.0.2";
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 export type {
+  InstallationEvent as GitHubInstallationEvent,
   PullRequestEvent as GitHubPullRequestEvent,
   PullRequestReviewEvent as GitHubPullRequestReviewEvent,
   WebhookEvent as GitHubWebhookEvent,

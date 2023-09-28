@@ -7,27 +7,33 @@ import type { GitHubEventPayload } from "../svcdata/mod.ts";
 
 import { onPullRequest } from "./pullrequest.ts";
 
+/**
+ * Handles the given GitHub event.
+ *
+ * @return A boolean indicating whether the operation needs to be retried.
+ */
 export async function handleGitHubEvent(
   msg: GitHubEventPayload,
-): Promise<void> {
+): Promise<boolean> {
   console.log(`[${msg.requestID}] Processing ${msg.eventName} event`);
 
+  let retry = false;
   switch (msg.eventName) {
     default:
       console.debug(
         `[${msg.requestID}] Discarding github event ${msg.eventName}`,
       );
-      return;
+      return false;
 
     case "pull_request":
-      await onPullRequest(
+      retry = await onPullRequest(
         msg.requestID,
         msg.payload as GitHubPullRequestEvent,
       );
       break;
 
     case "pull_request_review":
-      await onPullRequest(
+      retry = await onPullRequest(
         msg.requestID,
         msg.payload as GitHubPullRequestReviewEvent,
       );
@@ -35,4 +41,5 @@ export async function handleGitHubEvent(
   }
 
   console.log(`[${msg.requestID}] Processed ${msg.eventName} event`);
+  return retry;
 }

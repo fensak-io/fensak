@@ -30,7 +30,7 @@ jobs:
         run: deno lint
 
       - name: test
-        run: deno test --allow-net --allow-env --allow-read --reporter=junit --junit-path=./report.xml
+        run: deno test --unstable --allow-net --allow-env --allow-read --reporter=junit --junit-path=./report.xml
         env:
           FENSAK_GITHUB_WEBHOOK_SECRET: ${{ secrets.FENSAK_GITHUB_WEBHOOK_SECRET }}
           FENSAK_GITHUB_APP_ID: ${{ secrets.FENSAK_GITHUB_APP_ID }}

@@ -1,10 +1,28 @@
 import { RuleFnSourceLang } from "../udr/mod.ts";
 
 /**
+ * Represents a unique lock in the system, that can be used for unlocking.
+ */
+export interface Lock {
+  key: string;
+  id: string;
+}
+
+/**
+ * Represents a GitHub organization that has installed Fensak.
+ * @property name The name (in slug form) of the GitHub organization.
+ * @property installationID The installation ID of the GitHub app. Used for authentication.
+ */
+export interface GitHubOrg {
+  name: string;
+  installationID: number;
+}
+
+/**
  * The configuration for an organization.
  * @property repos The mapping of repo names (scoped to the org) to the corresponding repository configuration.
  */
-interface OrgConfig {
+export interface OrgConfig {
   repos: Record<string, RepoConfig>;
 }
 
@@ -16,7 +34,7 @@ interface OrgConfig {
  * @property requiredApprovals The number of unique approvals from users with write access that are required to pass the
  *                             check when the auto-approve rule fails. If omitted, defaults to 1.
  */
-interface RepoConfig {
+export interface RepoConfig {
   ruleFile: string;
   ruleLang?: RuleFnSourceLang;
   requiredApprovals?: number;
@@ -28,7 +46,7 @@ interface RepoConfig {
  * @property ruleLookup A lookup table that maps the rules in the org repo to their compiled definition.
  * @property gitSHA The commit sha used for retrieving the configuration. Used for cache busting.
  */
-interface ComputedFensakConfig {
+export interface ComputedFensakConfig {
   orgConfig: OrgConfig;
   ruleLookup: RuleLookup;
   gitSHA: string;
@@ -39,7 +57,7 @@ interface ComputedFensakConfig {
  * @property sourceGitHash The git hash of the original source file. Used for cache busting.
  * @property compiledRule The compiled, ES5 compatible rule source file.
  */
-interface CompiledRuleSource {
+export interface CompiledRuleSource {
   sourceGitHash: string;
   compiledRule: string;
   fileURL: URL;
@@ -49,12 +67,4 @@ interface CompiledRuleSource {
  * A lookup table mapping source file names to the corresponding compiled file contents. This is used to quickly
  * retrieve the source contents for a particular Org.
  */
-type RuleLookup = Record<string, CompiledRuleSource>;
-
-export type {
-  CompiledRuleSource,
-  ComputedFensakConfig,
-  OrgConfig,
-  RepoConfig,
-  RuleLookup,
-};
+export type RuleLookup = Record<string, CompiledRuleSource>;

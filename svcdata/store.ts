@@ -81,6 +81,13 @@ export async function storeGitHubOrg(org: GitHubOrg): Promise<void> {
 }
 
 /**
+ * Deletes the record of the github organization in the KV store.
+ */
+export async function deleteGitHubOrg(orgName: string): Promise<void> {
+  await mainKV.delete([TableNames.GitHubOrg, orgName]);
+}
+
+/**
  * Retrieves the github organization from the KV store. This will throw an error if there is no record of the
  * corresponding organization.
  */
@@ -120,15 +127,4 @@ export async function getComputedFensakConfig(
     return null;
   }
   return entry.value;
-}
-
-/**
- * Loads the test GitHub Org into the KV store. This is primarily used for dev purposes.
- */
-export async function loadTestGitHubOrg(instID: number) {
-  await storeGitHubOrg({
-    name: "fensak-test",
-    installationID: instID,
-    repoLimit: 100,
-  });
 }

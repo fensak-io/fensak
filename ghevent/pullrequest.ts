@@ -89,7 +89,7 @@ async function runReviewRoutine(
   const ghorg = await mustGetGitHubOrg(owner);
   const octokit = octokitFromInstallation(ghorg.installationID);
 
-  const cfg = await loadConfigFromGitHub(octokit, ghorg.name);
+  const cfg = await loadConfigFromGitHub(octokit, ghorg);
   if (!cfg) {
     console.warn(
       `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,

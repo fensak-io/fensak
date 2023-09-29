@@ -96,10 +96,19 @@ export async function storeGitHubOrg(
 }
 
 /**
- * Deletes the record of the github organization in the KV store.
+ * Deletes the record of the github organization in the KV store. This also deletes any cached config data from our
+ * internal records.
  */
 export async function deleteGitHubOrg(orgName: string): Promise<void> {
-  await mainKV.delete([TableNames.GitHubOrg, orgName]);
+  const ok = await mainKV.atomic()
+    .delete([TableNames.GitHubOrg, orgName])
+    .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, orgName])
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not delete org ${orgName} and associated config from system.`,
+    );
+  }
 }
 
 /**

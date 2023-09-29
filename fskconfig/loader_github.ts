@@ -261,9 +261,8 @@ async function loadRuleFiles(
     out[fname] = {
       sourceGitHash: finfo.sha,
       compiledRule: compiledContents,
-      fileURL: new URL(
+      fileURL:
         `https://github.com/${owner}/${fensakCfgRepoName}/blob/${repoSHA}/${fname}`,
-      ),
     };
   }
   return out;

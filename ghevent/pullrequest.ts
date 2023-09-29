@@ -211,11 +211,15 @@ async function runReviewRoutine(
     const reasonLines = [];
     reasonLines.push(
       `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).`,
-      "",
-      "The following users approved the PR, but do not have write access to the repository:",
     );
-    for (const u of nonWriterApprovalUsers) {
-      reasonLines.push(`- \`${u}\``);
+    if (nonWriterApprovalUsers.length > 0) {
+      reasonLines.push("");
+      reasonLines.push(
+        "The following users approved the PR, but do not have write access to the repository:",
+      );
+      for (const u of nonWriterApprovalUsers) {
+        reasonLines.push(`- \`${u}\``);
+      }
     }
     const reason = reasonLines.join("\n");
     const [summary, details] = formatCheckOutputText(

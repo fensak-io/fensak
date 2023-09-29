@@ -12,6 +12,10 @@
     __format: "number",
   },
   github: {
+    activeMarketplacePlanRequired: {
+      __name: "FENSAK_GITHUB_ACTIVE_MARKETPLACE_PLAN_REQUIRED",
+      __format: "boolean",
+    },
     webhookSecret: "FENSAK_GITHUB_WEBHOOK_SECRET",
     app: {
       appID: {

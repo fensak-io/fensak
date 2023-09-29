@@ -18,7 +18,8 @@ export enum LineOp {
  * Represents updates to a single line in a hunk.
  * @property op The operation that was done to the line in the hunk.
  * @property text The text context for the operation. For insert operations, this is the line to insert; for delete
- *                operations, this is the line to delete; for modifications this is the resulting text.
+ *                operations, this is the line to delete; for modifications this is the original text.
+ * @property newText The updated text for modifications. Only set if op is LineOp.Modified.
  */
 export interface ILineDiff {
   op: LineOp;

@@ -130,6 +130,7 @@ async function runReviewRoutine(
     );
     return false;
   }
+  const ruleFileURL = ruleFn.fileURL.toString();
   const requiredApprovals = repoCfg.requiredApprovals || 1;
 
   const checkID = await initializeCheck(
@@ -164,7 +165,7 @@ async function runReviewRoutine(
     if (automerge.approve) {
       const [summary, details] = formatCheckOutputText(
         automerge.approve,
-        `The change set passed the auto-approve rule [${repoCfg.ruleFile}](${ruleFn.fileURL.toString()}).`,
+        `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}).`,
         automerge.logs,
       );
       await completeCheck(

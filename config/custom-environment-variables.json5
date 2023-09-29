@@ -1,4 +1,16 @@
 {
+  configFileSizeLimit: {
+    __name: "FENSAK_CONFIG_FILE_SIZE_LIMIT",
+    __format: "number",
+  },
+  rulesFileSizeLimit: {
+    __name: "FENSAK_RULES_FILE_SIZE_LIMIT",
+    __format: "number",
+  },
+  defaultOrgRepoLimit: {
+    __name: "FENSAK_DEFAULT_ORG_REPO_LIMIT",
+    __format: "number",
+  },
   github: {
     webhookSecret: "FENSAK_GITHUB_WEBHOOK_SECRET",
     app: {

@@ -21,6 +21,7 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
     name: "fensak-test",
     installationID: 0,
     repoLimit: 100,
+    marketplacePlan: "pro",
   };
 
   const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
@@ -67,6 +68,7 @@ Deno.test("loadConfigFromGitHub checks repo limits", async () => {
     name: "fensak-test",
     installationID: 0,
     repoLimit: 1,
+    marketplacePlan: "pro",
   };
 
   await assertRejects(

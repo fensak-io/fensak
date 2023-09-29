@@ -74,10 +74,25 @@ export async function releaseLock(lock: Lock): Promise<void> {
 
 /**
  * Stores the github organization into the KV store so that we can lookup the installation ID to authenticate as the
- * Org.
+ * Org. If existingOrgRecord is provided, this will do an atomic check to make sure the state hasn't changed.
+ * @returns Whether the record was successfully stored.
  */
-export async function storeGitHubOrg(org: GitHubOrg): Promise<void> {
-  await mainKV.set([TableNames.GitHubOrg, org.name], org);
+export async function storeGitHubOrg(
+  org: GitHubOrg,
+  existingOrgRecord?: Deno.KvEntryMaybe<GitHubOrg>,
+): Promise<boolean> {
+  const key = [TableNames.GitHubOrg, org.name];
+
+  if (!existingOrgRecord) {
+    await mainKV.set(key, org);
+    return true;
+  }
+
+  const { ok } = await mainKV.atomic()
+    .check(existingOrgRecord)
+    .set(key, org)
+    .commit();
+  return ok;
 }
 
 /**
@@ -85,6 +100,16 @@ export async function storeGitHubOrg(org: GitHubOrg): Promise<void> {
  */
 export async function deleteGitHubOrg(orgName: string): Promise<void> {
   await mainKV.delete([TableNames.GitHubOrg, orgName]);
+}
+
+/**
+ * Retrieves the raw github organization record from the KV store. This is useful for use with the existingOrgRecord
+ * parameter in storeGitHubOrg.
+ */
+export async function getGitHubOrgRecord(
+  orgName: string,
+): Promise<Deno.KvEntryMaybe<GitHubOrg>> {
+  return await mainKV.get<GitHubOrg>([TableNames.GitHubOrg, orgName]);
 }
 
 /**

@@ -15,6 +15,11 @@
    * Settings/Secrets related to interacting with GitHub.
    */
   github: {
+    // Whether an active GitHub Marketplace plan is required to maintain an active account. When disabled, all
+    // functionality will be made available if the user has the app installed, regardless of a corresponding Marketplace
+    // plan.
+    activeMarketplacePlanRequired: true,
+
     // The secret string used to authenticate GitHub webhook requests coming in.
     webhookSecret: "",
 

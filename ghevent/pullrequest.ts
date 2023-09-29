@@ -1,4 +1,4 @@
-import { Octokit } from "../deps.ts";
+import { config, Octokit } from "../deps.ts";
 import type {
   GitHubPullRequestEvent,
   GitHubPullRequestReviewEvent,
@@ -15,6 +15,10 @@ import {
   formatCheckOutputText,
   initializeCheck,
 } from "./checks.ts";
+
+const enforceMarketplacePlan = config.get(
+  "github.activeMarketplacePlanRequired",
+);
 
 /**
  * Route the specific pull request sub event to the relevant core business logic to process it.
@@ -87,6 +91,20 @@ async function runReviewRoutine(
   headSHA: string,
 ): Promise<boolean> {
   const ghorg = await mustGetGitHubOrg(owner);
+  if (enforceMarketplacePlan && !ghorg.marketplacePlan) {
+    console.warn(
+      `[${requestID}] Ignoring pull request action for org ${owner} - no active marketplace plan on record.`,
+    );
+    return false;
+  }
+  if (!ghorg.installationID) {
+    // We fail loudly in this case because this is a bug in the system as it doesn't make sense that the installation
+    // event wasn't handled by the time we start getting pull requests for an Org.
+    throw new Error(
+      `[${requestID}] No active installation on record for org ${owner} when handling pull request action for ${repoName} (Num: ${prNum}).`,
+    );
+  }
+
   const octokit = octokitFromInstallation(ghorg.installationID);
 
   const cfg = await loadConfigFromGitHub(octokit, ghorg);

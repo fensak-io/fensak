@@ -1,5 +1,6 @@
 # Fensak
 
+
 This is the source code for [Fensak](https://fensak.io), a service that allows users to apply security best practices to
 GitOps workflows without any compromises.
 
@@ -34,3 +35,5 @@ BUSL 1.1 license.
 On the other hand, if you wish to self host an instance of Fensak for internal use, then you can license Fensak under
 the terms of the AGPL 3.0 (or later) license. You can not self host an instance of Fensak under the BUSL 1.1 license
 since it does not allow any additional use grant for production usage.
+
+Refer to the [License FAQ](https://docs.fensak.io/docs/license-faq/) for more information.

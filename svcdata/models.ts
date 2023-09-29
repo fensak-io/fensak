@@ -64,7 +64,7 @@ export interface ComputedFensakConfig {
 export interface CompiledRuleSource {
   sourceGitHash: string;
   compiledRule: string;
-  fileURL: URL;
+  fileURL: string;
 }
 
 /**

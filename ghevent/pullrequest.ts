@@ -130,7 +130,7 @@ async function runReviewRoutine(
     );
     return false;
   }
-  const ruleFileURL = ruleFn.fileURL.toString();
+  const ruleFileURL = ruleFn.fileURL;
   const requiredApprovals = repoCfg.requiredApprovals || 1;
 
   const checkID = await initializeCheck(
@@ -210,7 +210,7 @@ async function runReviewRoutine(
     // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
     const reasonLines = [];
     reasonLines.push(
-      `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL.toString()}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).`,
+      `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).`,
       "",
       "The following users approved the PR, but do not have write access to the repository:",
     );

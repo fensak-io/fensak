@@ -1,3 +1,6 @@
+// Copyright (c) Fensak, LLC.
+// SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
+
 import { Context, Status } from "../deps.ts";
 import type { Middleware, Next } from "../deps.ts";
 import { githubWebhooks } from "../ghauth/mod.ts";

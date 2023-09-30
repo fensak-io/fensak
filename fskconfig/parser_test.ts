@@ -1,3 +1,6 @@
+// Copyright (c) Fensak, LLC.
+// SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
+
 import { assertEquals, assertThrows, path } from "../test_deps.ts";
 import { parseConfigFile } from "./parser.ts";
 import { RuleFnSourceLang } from "../udr/mod.ts";

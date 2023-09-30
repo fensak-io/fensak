@@ -14,6 +14,10 @@ made, we will provide a detailed response indicating the next steps in handling
 your report, and endeavor to keep you infomred of the progress towards a fix and
 full announcement.
 
-Thank you for your help in improving the security of our open source software.
+Thank you for your help in improving the security of our open source software!
 We appreciate your efforts and responsible disclosure and will make every effort
 to acknowledge your contributions.
+
+> **NOTE**
+>
+> We currently do not have a bug bounty program and will not offer bounties on reported security vulnerabilities.

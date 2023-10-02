@@ -3,8 +3,10 @@
 
 import { config, Octokit } from "../deps.ts";
 import type {
+  GitHubPullRequest,
   GitHubPullRequestEvent,
   GitHubPullRequestReviewEvent,
+  GitHubUser,
 } from "../deps.ts";
 
 import { octokitFromInstallation } from "../ghauth/mod.ts";
@@ -22,6 +24,16 @@ import {
 const enforceMarketplacePlan = config.get(
   "github.activeMarketplacePlanRequired",
 );
+const permissionsWithWriteAccess = [
+  "admin",
+  "write",
+];
+
+enum AuthorType {
+  TrustedUser = 0,
+  MachineUser = 1,
+  User = 2,
+}
 
 /**
  * Route the specific pull request sub event to the relevant core business logic to process it.
@@ -62,8 +74,7 @@ export async function onPullRequest(
         requestID,
         payload.organization.login,
         payload.repository.name,
-        payload.pull_request.number,
-        payload.pull_request.head.sha,
+        payload.pull_request as GitHubPullRequest,
       );
   }
 }
@@ -80,9 +91,10 @@ async function runReviewRoutine(
   requestID: string,
   owner: string,
   repoName: string,
-  prNum: number,
-  headSHA: string,
+  pullRequest: GitHubPullRequest,
 ): Promise<boolean> {
+  const prNum = pullRequest.number;
+  const headSHA = pullRequest.head.sha;
   const ghorg = await mustGetGitHubOrg(owner);
   if (enforceMarketplacePlan && !ghorg.marketplacePlan) {
     console.warn(
@@ -124,7 +136,36 @@ async function runReviewRoutine(
     return false;
   }
   const ruleFileURL = ruleFn.fileURL;
-  const requiredApprovals = repoCfg.requiredApprovals || 1;
+
+  const authorType = await determineAuthorType(
+    octokit,
+    cfg.orgConfig.machineUsers,
+    owner,
+    repoName,
+    pullRequest.user,
+  );
+
+  let requiredApprovals: number;
+  let msgAnnotation = "";
+  switch (authorType) {
+    case AuthorType.TrustedUser:
+      requiredApprovals = repoCfg.requiredApprovalsForTrustedUsers ||
+        repoCfg.requiredApprovals || 1;
+      msgAnnotation =
+        "\n**NOTE**: PR was detected to be opened by a trusted user.";
+      break;
+
+    case AuthorType.MachineUser:
+      requiredApprovals = repoCfg.requiredApprovalsForMachineUsers ||
+        repoCfg.requiredApprovals || 1;
+      msgAnnotation =
+        "\n**NOTE**: PR was detected to be opened by a machine user.";
+      break;
+
+    default:
+      requiredApprovals = repoCfg.requiredApprovals || 1;
+      break;
+  }
 
   const checkID = await initializeCheck(
     octokit,
@@ -174,9 +215,10 @@ async function runReviewRoutine(
     }
 
     // Failed auto-approval check, so fall back to checking for required approvals.
-    const [numApprovals, nonWriterApprovalUsers] =
-      await numberApprovalsFromWriters(
+    const [numApprovals, machineUserApprovalUsers, untrustedUserApprovalUsers] =
+      await numberApprovalsFromTrustedUsers(
         octokit,
+        cfg.orgConfig.machineUsers,
         ghorg.name,
         repoName,
         prNum,
@@ -185,7 +227,7 @@ async function runReviewRoutine(
     if (numApprovals >= requiredApprovals) {
       const [summary, details] = formatCheckOutputText(
         automerge.approve,
-        `The change set has the required number of approvals (at least ${requiredApprovals}).`,
+        `The change set has the required number of approvals (at least ${requiredApprovals}).${msgAnnotation}`,
         automerge.logs,
       );
       await completeCheck(
@@ -203,14 +245,23 @@ async function runReviewRoutine(
     // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
     const reasonLines = [];
     reasonLines.push(
-      `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).`,
+      `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
     );
-    if (nonWriterApprovalUsers.length > 0) {
+    if (untrustedUserApprovalUsers.length > 0) {
       reasonLines.push("");
       reasonLines.push(
         "The following users approved the PR, but do not have write access to the repository:",
       );
-      for (const u of nonWriterApprovalUsers) {
+      for (const u of untrustedUserApprovalUsers) {
+        reasonLines.push(`- \`${u}\``);
+      }
+    }
+    if (machineUserApprovalUsers.length > 0) {
+      reasonLines.push("");
+      reasonLines.push(
+        "The following users approved the PR, but are machine users:",
+      );
+      for (const u of machineUserApprovalUsers) {
         reasonLines.push(`- \`${u}\``);
       }
     }
@@ -249,13 +300,14 @@ async function runReviewRoutine(
   return false;
 }
 
-async function numberApprovalsFromWriters(
+async function numberApprovalsFromTrustedUsers(
   octokit: Octokit,
+  machineUsers: string[],
   owner: string,
   repo: string,
   prNum: number,
   requiredApprovals: number,
-): Promise<[number, string[]]> {
+): Promise<[number, string[], string[]]> {
   const { data: reviews } = await octokit.pulls.listReviews({
     owner,
     repo,
@@ -274,33 +326,74 @@ async function numberApprovalsFromWriters(
   // calls and risk hitting the API rate limit.
   //
   // See https://github.com/orgs/community/discussions/18690
-  let numApprovalsFromWriters = 0;
-  const nonWriterApprovalUsers = [];
+  let numApprovalsFromTrustedUsers = 0;
+  const untrustedUserApprovalUsers = [];
+  const machineUserApprovalUsers = [];
   for (const a of approvals) {
     if (a.user == null) {
       continue;
     }
 
-    const { data: p } = await octokit.repos.getCollaboratorPermissionLevel({
+    const authorType = await determineAuthorType(
+      octokit,
+      machineUsers,
       owner,
       repo,
-      username: a.user.login,
-    });
-    const permissionsWithWriteAccess = [
-      "admin",
-      "write",
-    ];
-    if (permissionsWithWriteAccess.includes(p.permission)) {
-      numApprovalsFromWriters++;
-    } else {
-      nonWriterApprovalUsers.push(a.user.login);
+      a.user as GitHubUser,
+    );
+    switch (authorType) {
+      case AuthorType.TrustedUser:
+        numApprovalsFromTrustedUsers++;
+        break;
+
+      case AuthorType.MachineUser:
+        machineUserApprovalUsers.push(a.user.login);
+        break;
+
+      default:
+        untrustedUserApprovalUsers.push(a.user.login);
+        break;
     }
 
     // Short circuit to save on API calls if we reached the number of required approvals already
-    if (numApprovalsFromWriters >= requiredApprovals) {
-      return [numApprovalsFromWriters, nonWriterApprovalUsers];
+    if (numApprovalsFromTrustedUsers >= requiredApprovals) {
+      return [
+        numApprovalsFromTrustedUsers,
+        machineUserApprovalUsers,
+        untrustedUserApprovalUsers,
+      ];
     }
   }
 
-  return [numApprovalsFromWriters, nonWriterApprovalUsers];
+  return [
+    numApprovalsFromTrustedUsers,
+    machineUserApprovalUsers,
+    untrustedUserApprovalUsers,
+  ];
+}
+
+async function determineAuthorType(
+  octokit: Octokit,
+  machineUsers: string[],
+  owner: string,
+  repo: string,
+  user: GitHubUser,
+): Promise<AuthorType> {
+  if (
+    user.type === "Bot" ||
+    machineUsers.includes(user.login)
+  ) {
+    return AuthorType.MachineUser;
+  }
+
+  const { data: p } = await octokit.repos.getCollaboratorPermissionLevel({
+    owner,
+    repo,
+    username: user.login,
+  });
+  if (permissionsWithWriteAccess.includes(p.permission)) {
+    return AuthorType.TrustedUser;
+  }
+
+  return AuthorType.User;
 }

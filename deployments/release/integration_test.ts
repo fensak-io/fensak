@@ -6,24 +6,25 @@
  * This test suite is intended to target the staging environment by making commits and PRs on `fensak-test` and
  * verifying the resulting checks.
  *
- * This suite is meant to run on merges to main and on releases, prior to deployment to prod.
+ * This suite is meant to run on PRs to the `release` branch, prior to deployment to prod.
  */
 
-import { assertEquals } from "../test_deps.ts";
+import { assertEquals } from "../../test_deps.ts";
 import {
   base64,
-  crypto,
   GitHubComponents,
   Octokit,
   octokitCreateAppAuth,
-} from "../deps.ts";
+} from "../../deps.ts";
 
 import {
   commitFileUpdateToBranch,
   createBranchFromDefault,
   deleteBranch,
   getHeadSHA,
-} from "../ghstd/mod.ts";
+} from "../../ghstd/mod.ts";
+
+import { getRandomString, sleep } from "./utils.ts";
 
 /**
  * start global constants
@@ -354,24 +355,4 @@ async function approvePR(
     pull_number: prNum,
     event: "APPROVE",
   });
-}
-
-function sleep(time: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, time));
-}
-
-/**
- * Get a random string of length s.
- */
-function getRandomString(s: number) {
-  if (s % 2 == 1) {
-    throw new Deno.errors.InvalidData("Only even sizes are supported");
-  }
-  const buf = new Uint8Array(s / 2);
-  crypto.getRandomValues(buf);
-  let ret = "";
-  for (let i = 0; i < buf.length; ++i) {
-    ret += ("0" + buf[i].toString(16)).slice(-2);
-  }
-  return ret;
 }

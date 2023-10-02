@@ -24,8 +24,10 @@ export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 export type {
   InstallationEvent as GitHubInstallationEvent,
   MarketplacePurchaseEvent as GitHubMarketplacePurchaseEvent,
+  PullRequest as GitHubPullRequest,
   PullRequestEvent as GitHubPullRequestEvent,
   PullRequestReviewEvent as GitHubPullRequestReviewEvent,
+  User as GitHubUser,
   WebhookEvent as GitHubWebhookEvent,
   WebhookEventName as GitHubWebhookEventName,
 } from "npm:@octokit/webhooks-types@7.1.0";

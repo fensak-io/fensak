@@ -56,8 +56,13 @@ export function parseConfigFile(
   const typedData: OrgConfig = data as OrgConfig;
 
   // Configure defaults:
+  // - set the machineUsers top level key to empty array if unset.
   // - set the repoLang based on the filename extension if any entry is missing it.
   // - set the requiredApprovals to 1 if it is unset.
+  // - set the requiredApprovalsForMachineUsers to requiredApprovals if it is unset.
+  if (!typedData.machineUsers) {
+    typedData.machineUsers = [];
+  }
   for (const repoName in typedData.repos) {
     const cfg = typedData.repos[repoName];
     if (!cfg.ruleLang) {
@@ -65,6 +70,10 @@ export function parseConfigFile(
     }
     if (!cfg.requiredApprovals) {
       typedData.repos[repoName].requiredApprovals = 1;
+    }
+    if (!cfg.requiredApprovalsForMachineUsers) {
+      typedData.repos[repoName].requiredApprovalsForMachineUsers =
+        typedData.repos[repoName].requiredApprovals;
     }
   }
 

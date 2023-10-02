@@ -28,9 +28,12 @@ export interface GitHubOrg {
 /**
  * The configuration for an organization.
  * @property repos The mapping of repo names (scoped to the org) to the corresponding repository configuration.
+ * @property machineUsers A list of user logins that map to machine users in your account. This should not include
+ *                        GitHub Apps, as those are automatically labeled as machine users.
  */
 export interface OrgConfig {
   repos: Record<string, RepoConfig>;
+  machineUsers: string[];
 }
 
 /**
@@ -40,11 +43,17 @@ export interface OrgConfig {
  *                    source file extension. Note that we will always assume ES6 for js files.
  * @property requiredApprovals The number of unique approvals from users with write access that are required to pass the
  *                             check when the auto-approve rule fails. If omitted, defaults to 1.
+ * @property requiredApprovalsForMachineUsers The number of unique approvals from human users with write access that are
+ *                                    required to pass the check for pull requests opened by machine users (GitHub Apps,
+ *                                    or any user labeled as a machine user in the machineUsers top level key) when the
+ *                                    auto-approve rule fails. If omitted, defaults to the value set in
+ *                                    requiredApprovals.
  */
 export interface RepoConfig {
   ruleFile: string;
   ruleLang?: RuleFnSourceLang;
   requiredApprovals?: number;
+  requiredApprovalsForMachineUsers?: number;
 }
 
 /**

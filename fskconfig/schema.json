@@ -26,6 +26,11 @@
               "type": "integer",
               "minimum": 1
             },
+            "requiredApprovalsForTrustedUsers": {
+              "description": "The number of unique approvals from users with write access that are required to pass the check for pull requests opened by trusted users when the auto-approve rule fails. If omitted, defaults to the value set in requiredApprovals.",
+              "type": "integer",
+              "minimum": 1
+            },
             "requiredApprovalsForMachineUsers": {
               "description": "The number of unique approvals from human users with write access that are required to pass the check for pull requests opened by machine users (GitHub Apps, or any user labeled as a machine user in the machineUsers top level key) when the auto-approve rule fails. If omitted, defaults to the value set in requiredApprovals.",
               "type": "integer",

@@ -10,3 +10,9 @@ ruleLang = "es5"
 
 [repos.test-fensak]
 ruleFile = "app_version.js"
+
+[repos.test-fensak-different-reviewers]
+ruleFile = "app_version.js"
+requiredApprovals = 2
+requiredApprovalsForTrustedUsers = 1
+requiredApprovalsForMachineUsers = 3

@@ -1,0 +1,68 @@
+name: release sanity check
+
+on:
+  pull_request:
+    # Only run on PRs against release
+    branches:
+      - release
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  # Sanity check release parameters:
+  # - that the PR is from main
+  # - that staging env on deno deploy is running head SHA
+  sanitycheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: halt pipeline if merging from non-main branch
+        run: "false"
+        if: "github.head_ref != 'main'"
+
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+
+      - uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31 # v1.1.2
+        with:
+          deno-version: v1.37.0
+
+      - name: sanity check
+        run: |
+          deno test \
+            --unstable --allow-net --allow-env --allow-read \
+            ./deployments/release/sanitycheck_test.ts
+        env:
+          FENSAK_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Run integration tests against stage environment
+  integrationtest:
+    runs-on: ubuntu-latest
+    needs: sanitycheck
+    steps:
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+
+      - uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31 # v1.1.2
+        with:
+          deno-version: v1.37.0
+
+      - name: test
+        run: |
+          deno test \
+            --unstable --allow-net --allow-env --allow-read \
+            --reporter=junit --junit-path=./report.xml \
+            ./deployments/release/integration_test.ts
+        env:
+          FENSAK_TEST_COMMITTER_GITHUB_APP_PRIVATE_KEY: ${{ secrets.FENSAK_TEST_COMMITTER_GITHUB_APP_PRIVATE_KEY }}
+          FENSAK_TEST_COMMITTER_GITHUB_APP_ID: ${{ secrets.FENSAK_TEST_COMMITTER_GITHUB_APP_ID }}
+          FENSAK_TEST_COMMITTER_GITHUB_APP_INSTID: ${{ secrets.FENSAK_TEST_COMMITTER_GITHUB_APP_INSTID }}
+          FENSAK_STAGING_GITHUB_APP_ID: ${{ secrets.FENSAK_STAGING_GITHUB_APP_ID }}
+          FENSAK_TEST_OPS_USER_API_KEY: ${{ secrets.FENSAK_TEST_OPS_USER_API_KEY }}
+          FENSAK_TEST_ADMIN_USER_API_KEY: ${{ secrets.FENSAK_TEST_ADMIN_USER_API_KEY }}
+
+      - name: report
+        uses: mikepenz/action-junit-report@75b84e78b3f0aaea7ed7cf8d1d100d7f97f963ec # v4.0.0
+        if: always()
+        with:
+          report_paths: "report.xml"
+          check_name: "deno test report"

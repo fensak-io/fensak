@@ -2,11 +2,12 @@ name: lint-test
 
 on:
   push:
-    tags:
-      - v*
     branches:
       - main
   pull_request:
+    # Only run on PRs against main
+    branches:
+      - main
 
 permissions:
   checks: write
@@ -33,7 +34,7 @@ jobs:
         run: |
           deno test \
             --parallel --unstable --allow-net --allow-env --allow-read \
-            --ignore=integration/integration_test.ts \
+            --ignore=deployments/release \
             --reporter=junit --junit-path=./report.xml
         env:
           FENSAK_GITHUB_WEBHOOK_SECRET: ${{ secrets.FENSAK_GITHUB_WEBHOOK_SECRET }}

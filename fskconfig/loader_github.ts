@@ -4,6 +4,7 @@
 import { base64, config, Octokit, path } from "../deps.ts";
 
 import { compileRuleFn, RuleFnSourceLang } from "../udr/mod.ts";
+import { getDefaultHeadSHA } from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
   GitHubOrg,
@@ -54,17 +55,7 @@ export async function loadConfigFromGitHub(
   clt: Octokit,
   ghorg: GitHubOrg,
 ): Promise<ComputedFensakConfig | null> {
-  const { data: repo } = await clt.repos.get({
-    owner: ghorg.name,
-    repo: fensakCfgRepoName,
-  });
-  const defaultBranch = repo.default_branch;
-  const { data: ref } = await clt.git.getRef({
-    owner: ghorg.name,
-    repo: fensakCfgRepoName,
-    ref: `heads/${defaultBranch}`,
-  });
-  const headSHA = ref.object.sha;
+  const headSHA = await getDefaultHeadSHA(clt, ghorg.name, fensakCfgRepoName);
 
   // Check the cache to see if we already have a computed version for this SHA, and if so, return it.
   const maybeCfg = await getComputedFensakConfig(

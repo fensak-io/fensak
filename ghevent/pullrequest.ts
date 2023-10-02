@@ -25,9 +25,8 @@ const enforceMarketplacePlan = config.get(
 
 /**
  * Route the specific pull request sub event to the relevant core business logic to process it.
- * Note that we only process synchronize and opened events that relate to PRs directly on the repository (no forks).
- * The idea is that Fensak only needs to reevaluate the rules when the code changes, or when there is a change in
- * approval.
+ * Note that we only process synchronize, opened, and review events. The idea is that Fensak only needs to reevaluate
+ * the rules when the code changes, or when there is a change in approval.
  *
  * @return A boolean indicating whether the operation needs to be retried.
  */
@@ -55,15 +54,6 @@ export async function onPullRequest(
       if (!payload.organization) {
         console.warn(
           `[${requestID}] No organization set for pull request event. Discarding.`,
-        );
-        return false;
-      }
-      if (
-        payload.pull_request.head.repo &&
-        payload.pull_request.head.repo.name !== payload.repository.name
-      ) {
-        console.warn(
-          `[${requestID}] Pull request opened from fork. Discarding.`,
         );
         return false;
       }

@@ -59,7 +59,8 @@ export function parseConfigFile(
   // - set the machineUsers top level key to empty array if unset.
   // - set the repoLang based on the filename extension if any entry is missing it.
   // - set the requiredApprovals to 1 if it is unset.
-  // - set the requiredApprovalsForMachineUsers to requiredApprovals if it is unset.
+  // - set the requiredApprovalsForMachineUsers and requiredApprovalsForTrustedUsers to requiredApprovals if it is
+  //   unset.
   if (!typedData.machineUsers) {
     typedData.machineUsers = [];
   }
@@ -73,6 +74,10 @@ export function parseConfigFile(
     }
     if (!cfg.requiredApprovalsForMachineUsers) {
       typedData.repos[repoName].requiredApprovalsForMachineUsers =
+        typedData.repos[repoName].requiredApprovals;
+    }
+    if (!cfg.requiredApprovalsForTrustedUsers) {
+      typedData.repos[repoName].requiredApprovalsForTrustedUsers =
         typedData.repos[repoName].requiredApprovals;
     }
   }

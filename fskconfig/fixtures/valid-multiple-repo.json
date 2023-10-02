@@ -10,6 +10,12 @@
     },
     "test-fensak": {
       "ruleFile": "app_version.js"
+    },
+    "test-fensak-different-reviewers": {
+      "ruleFile": "app_version.js",
+      "requiredApprovals": 2,
+      "requiredApprovalsForTrustedUsers": 1,
+      "requiredApprovalsForMachineUsers": 3
     }
   }
 }

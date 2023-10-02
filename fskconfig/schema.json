@@ -25,12 +25,24 @@
               "description": "The number of unique approvals from users with write access that are required to pass the check when the auto-approve rule fails. If omitted, defaults to 1.",
               "type": "integer",
               "minimum": 1
+            },
+            "requiredApprovalsForMachineUsers": {
+              "description": "The number of unique approvals from human users with write access that are required to pass the check for pull requests opened by machine users (GitHub Apps, or any user labeled as a machine user in the machineUsers top level key) when the auto-approve rule fails. If omitted, defaults to the value set in requiredApprovals.",
+              "type": "integer",
+              "minimum": 1
             }
           },
           "required": ["ruleFile"]
         }
       },
       "minProperties": 1
+    },
+    "machineUsers": {
+      "description": "A list of user logins that map to machine users in your account. This should not include GitHub Apps, as those are automatically labeled as machine users.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": ["repos"]

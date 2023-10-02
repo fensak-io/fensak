@@ -48,8 +48,10 @@ Deno.test("parseConfigFile single repo config", async () => {
         ruleFile: "app_deploy_rule.ts",
         ruleLang: RuleFnSourceLang.Typescript,
         requiredApprovals: 2,
+        requiredApprovalsForMachineUsers: 2,
       },
     },
+    machineUsers: [],
   });
 });
 
@@ -74,18 +76,22 @@ Deno.test("parseConfigFile multi repo config (different formats)", async (t) => 
               ruleFile: "app_deploy_rule.ts",
               ruleLang: RuleFnSourceLang.Typescript,
               requiredApprovals: 1,
+              requiredApprovalsForMachineUsers: 1,
             },
             "test-fensak-config": {
               ruleFile: "config_change_rule.js",
               ruleLang: RuleFnSourceLang.ES5,
               requiredApprovals: 1,
+              requiredApprovalsForMachineUsers: 1,
             },
             "test-fensak": {
               ruleFile: "app_version.js",
               ruleLang: RuleFnSourceLang.ES6,
               requiredApprovals: 1,
+              requiredApprovalsForMachineUsers: 1,
             },
           },
+          machineUsers: [],
         });
       },
       sanitizeOps: false,

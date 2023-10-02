@@ -17,7 +17,7 @@ import {
   loadConfigFromGitHub,
 } from "./loader_github.ts";
 
-const expectedHeadSHA = "ace97c0856cac0b9c34812f9204ae3f03d870b3b";
+const expectedHeadSHA = "23e84694e02644727431ece5081ccf3625f5c182";
 
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   const testOrg: GitHubOrg = {
@@ -32,17 +32,26 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   assertEquals(cfg.gitSHA, expectedHeadSHA);
   assertEquals(cfg.orgConfig, {
     repos: {
-      "test-github-webhooks": {
-        ruleFile: "subfolder/allow_readme_changes.js",
-        ruleLang: RuleFnSourceLang.ES6,
-        requiredApprovals: 1,
-      },
       "test-fensak-rules-engine": {
         ruleFile: "app_deploy_rule.ts",
         ruleLang: RuleFnSourceLang.Typescript,
         requiredApprovals: 1,
+        requiredApprovalsForMachineUsers: 1,
+      },
+      "test-fensak-automated-readme-only": {
+        ruleFile: "subfolder/allow_readme_changes.js",
+        ruleLang: RuleFnSourceLang.ES6,
+        requiredApprovals: 1,
+        requiredApprovalsForMachineUsers: 1,
+      },
+      "test-fensak-automated-appdeploy": {
+        ruleFile: "app_deploy_rule.ts",
+        ruleLang: RuleFnSourceLang.Typescript,
+        requiredApprovals: 1,
+        requiredApprovalsForMachineUsers: 2,
       },
     },
+    machineUsers: [],
   });
 
   // Test that the ruleLookup record contains rules for the expected rule functions.

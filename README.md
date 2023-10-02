@@ -56,7 +56,7 @@ Learn more at [fensak.io](https://fensak.io) and [docs.fensak.io](https://docs.f
 
 The easiest way to get started with Fensak is with [our official GitHub App, backed by our hosted managed
 service](https://github.com/apps/fensak-app). Check out our [Getting started
-guide](https://docs.fensak.io/docs/getting-started) for an quick overview of installing the app, configuring it, and
+guide](https://docs.fensak.io/docs/getting-started) for a quick overview of installing the app, configuring it, and
 getting going with auto-approving your Continuous Delivery Pull Requests.
 
 

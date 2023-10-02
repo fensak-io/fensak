@@ -1,5 +1,5 @@
 {
   "fmt": {
-    "exclude": ["*.md"]
+    "exclude": ["**/*.md"]
   }
 }

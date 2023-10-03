@@ -1,7 +1,7 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config, Octokit } from "../deps.ts";
+import { config, Octokit, reng } from "../deps.ts";
 import type {
   GitHubPullRequest,
   GitHubPullRequestEvent,
@@ -11,8 +11,6 @@ import type {
 
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
-import { patchFromGitHubPullRequest, SourcePlatform } from "../patch/mod.ts";
-import { RuleLogMode, runRule } from "../udr/mod.ts";
 import { mustGetGitHubOrg } from "../svcdata/mod.ts";
 
 import {
@@ -175,7 +173,7 @@ async function runReviewRoutine(
   );
 
   try {
-    const patch = await patchFromGitHubPullRequest(
+    const patch = await reng.patchFromGitHubPullRequest(
       octokit,
       {
         owner: ghorg.name,
@@ -186,14 +184,14 @@ async function runReviewRoutine(
 
     // Check the auto-approve rule
     const fetchMap: Record<string, Record<string, URL>> = {};
-    fetchMap[SourcePlatform.GitHub] = patch.patchFetchMap;
-    const automerge = await runRule(
+    fetchMap[reng.SourcePlatform.GitHub] = patch.patchFetchMap;
+    const automerge = await reng.runRule(
       ruleFn.compiledRule,
       patch.patchList,
       {
         fileFetchMap: fetchMap,
         // TODO: make this configurable by user
-        logMode: RuleLogMode.Capture,
+        logMode: reng.RuleLogMode.Capture,
       },
     );
     if (automerge.approve) {

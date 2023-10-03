@@ -1,7 +1,7 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { RuleFnSourceLang } from "../udr/mod.ts";
+import { reng } from "../deps.ts";
 
 /**
  * Represents a unique lock in the system, that can be used for unlocking.
@@ -55,7 +55,7 @@ export interface OrgConfig {
  */
 export interface RepoConfig {
   ruleFile: string;
-  ruleLang?: RuleFnSourceLang;
+  ruleLang?: reng.RuleFnSourceLang;
   requiredApprovals?: number;
   requiredApprovalsForTrustedUsers?: number;
   requiredApprovalsForMachineUsers?: number;

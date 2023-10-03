@@ -1,9 +1,8 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { Ajv, path, toml, yaml } from "../deps.ts";
+import { Ajv, path, reng, toml, yaml } from "../deps.ts";
 
-import { RuleFnSourceLang } from "../udr/mod.ts";
 import type { OrgConfig } from "../svcdata/mod.ts";
 
 const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -85,15 +84,15 @@ export function parseConfigFile(
   return typedData;
 }
 
-export function getRuleLang(ruleFname: string): RuleFnSourceLang {
+export function getRuleLang(ruleFname: string): reng.RuleFnSourceLang {
   const ext = path.extname(ruleFname);
   switch (ext) {
     default:
       throw new Error(`unsupported rule file type: ${ext}`);
 
     case ".ts":
-      return RuleFnSourceLang.Typescript;
+      return reng.RuleFnSourceLang.Typescript;
     case ".js":
-      return RuleFnSourceLang.ES6;
+      return reng.RuleFnSourceLang.ES6;
   }
 }

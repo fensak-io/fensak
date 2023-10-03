@@ -7,9 +7,9 @@ import {
   assertExists,
   assertRejects,
 } from "../test_deps.ts";
-import { octokitRestTestClt } from "../ghauth/rest_test.ts";
+import { reng } from "../deps.ts";
 
-import { RuleFnSourceLang } from "../udr/mod.ts";
+import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 import type { GitHubOrg } from "../svcdata/mod.ts";
 
 import {
@@ -34,21 +34,21 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
     repos: {
       "test-fensak-rules-engine": {
         ruleFile: "app_deploy_rule.ts",
-        ruleLang: RuleFnSourceLang.Typescript,
+        ruleLang: reng.RuleFnSourceLang.Typescript,
         requiredApprovals: 1,
         requiredApprovalsForTrustedUsers: 1,
         requiredApprovalsForMachineUsers: 1,
       },
       "test-fensak-automated-readme-only": {
         ruleFile: "subfolder/allow_readme_changes.js",
-        ruleLang: RuleFnSourceLang.ES6,
+        ruleLang: reng.RuleFnSourceLang.ES6,
         requiredApprovals: 1,
         requiredApprovalsForTrustedUsers: 1,
         requiredApprovalsForMachineUsers: 1,
       },
       "test-fensak-automated-appdeploy": {
         ruleFile: "app_deploy_rule.ts",
-        ruleLang: RuleFnSourceLang.Typescript,
+        ruleLang: reng.RuleFnSourceLang.Typescript,
         requiredApprovals: 1,
         requiredApprovalsForTrustedUsers: 1,
         requiredApprovalsForMachineUsers: 2,

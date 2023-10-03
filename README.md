@@ -75,12 +75,6 @@ scripts guide](https://docs.fensak.io/docs/writing-rules).
 
 Fensak is built in [TypeScript](https://www.typescriptlang.org) targeting [the Deno runtime](https://deno.com).
 
-This repository has two top level sources:
-
-- `main.ts`: This contains the entry point for the `fensak` service.
-- `mod.ts`: This contains the entry point for the `fensak` library, which contains
-  useful functions for testing user defined scripts.
-
 
 ## Reporting Bugs, Getting Help, Providing Feedback, etc
 

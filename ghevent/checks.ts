@@ -1,9 +1,7 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { Octokit } from "../deps.ts";
-
-import { IRuleLogEntry } from "../udr/mod.ts";
+import { Octokit, reng } from "../deps.ts";
 
 const checkName = "smart review";
 const checkTitle = "Fensak smart review";
@@ -51,7 +49,7 @@ export async function completeCheck(
 export function formatCheckOutputText(
   pass: boolean,
   reason: string,
-  logEntries: IRuleLogEntry[],
+  logEntries: reng.IRuleLogEntry[],
 ): [string, string] {
   const outputLines = [];
 

@@ -52,6 +52,4 @@ import _Ajv from "npm:ajv@^8.12.0";
 const Ajv = _Ajv as unknown as typeof _Ajv.default;
 export { Ajv };
 
-export {
-  Interpreter,
-} from "https://raw.githubusercontent.com/yorinasub17/JS-Interpreter-deno/v0.0.1/mod.ts";
+export * as reng from "npm:@fensak-io/reng@1.0.7";

@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
 import { assertEquals, assertThrows, path } from "../test_deps.ts";
+import { reng } from "../deps.ts";
+
 import { parseConfigFile } from "./parser.ts";
-import { RuleFnSourceLang } from "../udr/mod.ts";
 
 const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
 
@@ -46,7 +47,7 @@ Deno.test("parseConfigFile single repo config", async () => {
     repos: {
       "test-fensak-rules-engine": {
         ruleFile: "app_deploy_rule.ts",
-        ruleLang: RuleFnSourceLang.Typescript,
+        ruleLang: reng.RuleFnSourceLang.Typescript,
         requiredApprovals: 2,
         requiredApprovalsForTrustedUsers: 2,
         requiredApprovalsForMachineUsers: 2,
@@ -75,28 +76,28 @@ Deno.test("parseConfigFile multi repo config (different formats)", async (t) => 
           repos: {
             "test-fensak-rules-engine": {
               ruleFile: "app_deploy_rule.ts",
-              ruleLang: RuleFnSourceLang.Typescript,
+              ruleLang: reng.RuleFnSourceLang.Typescript,
               requiredApprovals: 1,
               requiredApprovalsForTrustedUsers: 1,
               requiredApprovalsForMachineUsers: 1,
             },
             "test-fensak-config": {
               ruleFile: "config_change_rule.js",
-              ruleLang: RuleFnSourceLang.ES5,
+              ruleLang: reng.RuleFnSourceLang.ES5,
               requiredApprovals: 1,
               requiredApprovalsForTrustedUsers: 1,
               requiredApprovalsForMachineUsers: 1,
             },
             "test-fensak": {
               ruleFile: "app_version.js",
-              ruleLang: RuleFnSourceLang.ES6,
+              ruleLang: reng.RuleFnSourceLang.ES6,
               requiredApprovals: 1,
               requiredApprovalsForTrustedUsers: 1,
               requiredApprovalsForMachineUsers: 1,
             },
             "test-fensak-different-reviewers": {
               ruleFile: "app_version.js",
-              ruleLang: RuleFnSourceLang.ES6,
+              ruleLang: reng.RuleFnSourceLang.ES6,
               requiredApprovals: 2,
               requiredApprovalsForTrustedUsers: 1,
               requiredApprovalsForMachineUsers: 3,

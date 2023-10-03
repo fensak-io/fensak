@@ -1,9 +1,8 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { base64, config, Octokit, path } from "../deps.ts";
+import { base64, config, Octokit, path, reng } from "../deps.ts";
 
-import { compileRuleFn, RuleFnSourceLang } from "../udr/mod.ts";
 import { getDefaultHeadSHA } from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
@@ -210,7 +209,7 @@ async function loadRuleFiles(
   fileLookup: Record<string, ITreeFile>,
   repoSHA: string,
 ): Promise<RuleLookup> {
-  const ruleFilesToLoad: Record<string, RuleFnSourceLang> = {};
+  const ruleFilesToLoad: Record<string, reng.RuleFnSourceLang> = {};
   for (const repoName in orgCfg.repos) {
     const repoCfg = orgCfg.repos[repoName];
     if (ruleFilesToLoad[repoCfg.ruleFile]) {
@@ -250,7 +249,7 @@ async function loadRuleFiles(
       gitSHA: finfo.sha,
       size: finfo.size,
     });
-    const compiledContents = compileRuleFn(contents, ruleLang);
+    const compiledContents = reng.compileRuleFn(contents, ruleLang);
 
     out[fname] = {
       sourceGitHash: finfo.sha,

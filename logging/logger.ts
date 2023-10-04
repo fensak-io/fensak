@@ -48,6 +48,7 @@ function initializeLogger(): winston.Logger {
       new WinstonLoki({
         host: lokiHost,
         basicAuth: lokiAuth,
+        replaceTimestamp: true,
       }),
     );
   }

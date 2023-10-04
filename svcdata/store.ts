@@ -32,7 +32,7 @@ export async function storeHealthCheckResult(reqID: string): Promise<void> {
 export async function waitForHealthCheckResult(
   reqID: string,
 ): Promise<boolean> {
-  const maxTries = 60;
+  const maxTries = 30;
   const sleepBetweenTries = 2;
 
   for (let i = 0; i < maxTries; i++) {

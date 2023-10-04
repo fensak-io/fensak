@@ -17,7 +17,7 @@ import {
   loadConfigFromGitHub,
 } from "./loader_github.ts";
 
-const expectedHeadSHA = "23e84694e02644727431ece5081ccf3625f5c182";
+const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   const testOrg: GitHubOrg = {

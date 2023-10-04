@@ -12,7 +12,16 @@ import { mainKV } from "./svc.ts";
  */
 export enum MessageType {
   Unknown = 0,
+  HealthCheck = 1,
   GitHubEvent = 10,
+}
+
+/**
+ * A message payload for healthchecks.
+ * @property requestID The request ID for the healthcheck.
+ */
+export interface HealthCheckPayload {
+  requestID: string;
 }
 
 /**
@@ -32,7 +41,7 @@ export interface GitHubEventPayload {
  */
 export interface Message {
   type: MessageType;
-  payload: GitHubEventPayload;
+  payload: GitHubEventPayload | HealthCheckPayload;
 }
 
 /**
@@ -49,6 +58,7 @@ export function listenQueue(
         throw new Error(`unknown message enqueued: ${msg}`);
 
       case MessageType.Unknown:
+      case MessageType.HealthCheck:
       case MessageType.GitHubEvent:
         await handler(msg as Message);
         break;

@@ -3,10 +3,13 @@
 
 import { crypto } from "../deps.ts";
 
+import { sleep } from "../xtd/mod.ts";
+
 import { mainKV } from "./svc.ts";
 import { ComputedFensakConfig, GitHubOrg, Lock } from "./models.ts";
 
 enum TableNames {
+  HealthCheck = "healthcheck",
   GitHubOrg = "github_org",
   FensakConfig = "fensak_config",
   Lock = "lock",
@@ -14,6 +17,42 @@ enum TableNames {
 
 export enum FensakConfigSource {
   GitHub = "github",
+}
+
+/**
+ * Stores the healthcheck result into the KV store.
+ */
+export async function storeHealthCheckResult(reqID: string): Promise<void> {
+  await mainKV.set([TableNames.HealthCheck, reqID], true, { expireIn: 60000 });
+}
+
+/**
+ * Waits for the healthcheck result to be populated, with a timeout.
+ */
+export async function waitForHealthCheckResult(
+  reqID: string,
+): Promise<boolean> {
+  const maxTries = 60;
+  const sleepBetweenTries = 2;
+
+  for (let i = 0; i < maxTries; i++) {
+    const result = await mainKV.get([TableNames.HealthCheck, reqID]);
+    if (result.value) {
+      return true;
+    }
+
+    if (i < maxTries - 1) {
+      console.debug(
+        `Health check result not ready (try ${
+          i + 1
+        } of ${maxTries}). Retrying after sleep for ${sleepBetweenTries} seconds.`,
+      );
+      await sleep(sleepBetweenTries * 1000);
+    }
+  }
+
+  console.error("Timed out waiting for healthcheck result");
+  return false;
 }
 
 /**

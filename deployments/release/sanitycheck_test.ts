@@ -11,8 +11,7 @@
 import { Octokit } from "../../deps.ts";
 
 import { getHeadSHA } from "../../ghstd/mod.ts";
-
-import { sleep } from "./utils.ts";
+import { sleep } from "../../xtd/mod.ts";
 
 const fensakOrg = "fensak-io";
 const fensakRepo = "fensak";

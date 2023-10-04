@@ -23,8 +23,7 @@ import {
   deleteBranch,
   getHeadSHA,
 } from "../../ghstd/mod.ts";
-
-import { getRandomString, sleep } from "./utils.ts";
+import { getRandomString, sleep } from "../../xtd/mod.ts";
 
 /**
  * start global constants

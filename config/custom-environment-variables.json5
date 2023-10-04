@@ -3,6 +3,7 @@
 
 
 {
+  env: "FENSAK_ENV",
   configFileSizeLimit: {
     __name: "FENSAK_CONFIG_FILE_SIZE_LIMIT",
     __format: "number",

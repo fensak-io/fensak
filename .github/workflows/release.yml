@@ -10,6 +10,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
+      checks: write # Needed for GHA to write the checks for the job
       contents: write # to be able to publish a GitHub release
       issues: write # to be able to comment on released issues
       pull-requests: write # to be able to comment on released pull requests
@@ -26,3 +27,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx -y semantic-release@^22.0.5
+
+  # Deploy to prod environment.
+  deployprod:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Needed to auth to Deno Deploy
+      checks: write # Needed for GHA to write the checks for the job
+      contents: read
+    steps:
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+        with:
+          fetch-depth: 0
+
+      - uses: denoland/deployctl@b841621a76eae438b09e1bce5e74549678c24e7f # v1.8.2
+        with:
+          project: fensak
+          entrypoint: main.ts

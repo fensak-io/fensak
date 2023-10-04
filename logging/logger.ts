@@ -3,6 +3,7 @@
 
 import { config, winston, WinstonLoki, WinstonTransport } from "../deps.ts";
 
+const serviceEnv = config.get("env");
 const loggingLevel = config.get("logging.level");
 const lokiEnabled = config.get("logging.loki.enabled");
 const lokiHost = config.get("logging.loki.host");
@@ -48,6 +49,11 @@ function initializeLogger(): winston.Logger {
       new WinstonLoki({
         host: lokiHost,
         basicAuth: lokiAuth,
+        replaceTimestamp: true,
+        labels: {
+          service: "fensak",
+          env: serviceEnv,
+        },
       }),
     );
   }
@@ -56,6 +62,7 @@ function initializeLogger(): winston.Logger {
     format: winston.format.json(),
     defaultMeta: {
       service: "fensak-app",
+      env: serviceEnv,
     },
     transports: transports,
   });

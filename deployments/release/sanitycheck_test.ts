@@ -25,7 +25,7 @@ if (!fensakAdminToken) {
 }
 const fensakAdminOctokit = new Octokit({ auth: fensakAdminToken });
 
-Deno.test("sanity check fensak-stage on Deno Deploy is up to date", async () => {
+Deno.test("sanity check fensak-stage on Deno Deploy is up to date and healthy", async () => {
   await waitForDenoDeploy(fensakAdminOctokit);
 
   const respNotFound = await fetch(
@@ -58,41 +58,30 @@ async function waitForDenoDeploy(octokit: Octokit): Promise<void> {
     fensakRepoDefaultBranch,
   );
   for (let i = 0; i < maxRetries; i++) {
-    const { data: deps } = await octokit.repos.listDeployments({
+    const { data: checks } = await octokit.checks.listForRef({
       owner: fensakOrg,
       repo: fensakRepo,
-      sha: headSHA,
+      ref: headSHA,
+      check_name: "deploystage",
+      filter: "latest",
     });
-    let fensakStageDeployment;
-    for (const d of deps) {
-      if (typeof d.payload === "string") {
+    let stageDeploymentCheck;
+    for (const c of checks.check_runs) {
+      if (!c.app) {
         continue;
       }
 
-      if (
-        d.payload.project_name === "fensak-stage" &&
-        d.environment === "Production"
-      ) {
-        fensakStageDeployment = d;
+      if (c.app.name === "GitHub Actions") {
+        stageDeploymentCheck = c;
         break;
       }
     }
-    if (fensakStageDeployment) {
-      const { data: statuses } = await octokit.repos.listDeploymentStatuses({
-        owner: fensakOrg,
-        repo: fensakRepo,
-        deployment_id: fensakStageDeployment.id,
-      });
-      // ASSUMPTION
-      // The returned statuses is sorted by newest first, so we just check the first one.
-      // If it is successful, then the environment is deployed.
-      if (statuses.length > 0 && statuses[0].state === "success") {
-        return;
-      }
+    if (stageDeploymentCheck && stageDeploymentCheck.conclusion === "success") {
+      return;
     }
 
     console.debug(
-      `Deno Deploy fensak-stage hasn't run yet on head commit on branch ${fensakRepoDefaultBranch} in ${fensakOrg}/${fensakRepo}. Retrying after 1 second delay.`,
+      `Deploy fensak-stage job hasn't run yet on head commit on branch ${fensakRepoDefaultBranch} in ${fensakOrg}/${fensakRepo}. Retrying after 1 second delay.`,
     );
     await sleep(sleepBetweenRetries);
   }

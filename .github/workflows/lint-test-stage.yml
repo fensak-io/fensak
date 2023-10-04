@@ -9,9 +9,6 @@ on:
     branches:
       - main
 
-env:
-  DENO_DIR: .deno
-
 jobs:
   # Run linter and tests against JS, TS, and YAML files
   linttest:
@@ -30,7 +27,7 @@ jobs:
         uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3.3.2
         with:
           key: denoDeps-${{ hashFiles('deno.lock') }}
-          path: ${{ env.DENO_DIR }}
+          path: ~/.cache/deno
 
       - name: fmt
         run: deno fmt --check

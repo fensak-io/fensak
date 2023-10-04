@@ -37,13 +37,6 @@ jobs:
         env:
           FENSAK_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Ideally we don't need to do this, but there seems to be some eventual consistency issue with the deployments
-      # where the integration test step frequently starts running against an old environment instead of the new one that
-      # was deployed if the PR is open and pushes to main happens.
-      # As such, we add an arbitrary sleep here to give Deno Deploy a chance to sync everything up.
-      - name: arbitrary sleep
-        run: sleep 60
-
       - name: integration test
         run: |
           deno test \

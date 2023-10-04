@@ -16,6 +16,27 @@
   defaultOrgRepoLimit: 5,
 
   /**
+   * Settings/Secrets related to logging.
+   */
+  logging: {
+    // The logging level. All logs below the specified level will be dropped. The levels in increasing order are:
+    // debug < info < warn < error
+    level: "debug",
+
+    // Settings/Secrets for configuring shipping the logs to a Loki instance.
+    loki: {
+      // Whether the Loki transport for logs should be enabled.
+      enabled: false,
+
+      // The Loki instance to ship logs to.
+      host: "",
+
+      // Basic authentication credentials to access the Loki instance.
+      basicAuth: "",
+    }
+  },
+
+  /**
    * Settings/Secrets related to interacting with GitHub.
    */
   github: {

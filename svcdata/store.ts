@@ -3,6 +3,7 @@
 
 import { crypto } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import { sleep } from "../xtd/mod.ts";
 
 import { mainKV } from "./svc.ts";
@@ -42,7 +43,7 @@ export async function waitForHealthCheckResult(
     }
 
     if (i < maxTries - 1) {
-      console.debug(
+      logger.debug(
         `Health check result not ready (try ${
           i + 1
         } of ${maxTries}). Retrying after sleep for ${sleepBetweenTries} seconds.`,
@@ -51,7 +52,7 @@ export async function waitForHealthCheckResult(
     }
   }
 
-  console.error("Timed out waiting for healthcheck result");
+  logger.error("Timed out waiting for healthcheck result");
   return false;
 }
 
@@ -92,7 +93,7 @@ export async function releaseLock(lock: Lock): Promise<void> {
   const tableKey = [TableNames.Lock, lock.key];
   const result = await mainKV.get<string>(tableKey);
   if (!result.value) {
-    console.warn(
+    logger.warn(
       `Attempted to release lock ${lock.key} (id: ${lock.id}) that is already released.`,
     );
     return;

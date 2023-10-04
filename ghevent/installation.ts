@@ -4,6 +4,7 @@
 import { config } from "../deps.ts";
 import type { GitHubInstallationEvent } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import {
   deleteGitHubOrg,
   getGitHubOrgRecord,
@@ -27,7 +28,7 @@ export async function onAppMgmt(
   let retry = false;
   switch (payload.action) {
     default:
-      console.debug(
+      logger.debug(
         `[${requestID}] Discarding github installation event ${payload.action}`,
       );
       break;
@@ -35,7 +36,7 @@ export async function onAppMgmt(
     case "created":
       retry = await orgInstalledApp(requestID, payload);
       if (!retry) {
-        console.log(
+        logger.info(
           `[${requestID}] Successfully stored record for ${payload.installation.account.login} in reaction to app install event.`,
         );
       }
@@ -43,7 +44,7 @@ export async function onAppMgmt(
 
     case "deleted":
       await orgRemovedApp(payload);
-      console.log(
+      logger.info(
         `[${requestID}] Successfully removed record for ${payload.installation.account.login} in reaction to app delete event.`,
       );
       break;
@@ -66,7 +67,7 @@ async function orgInstalledApp(
   if (
     allowedOrgs != null && !allowedOrgs.includes(owner)
   ) {
-    console.warn(
+    logger.warn(
       `[${requestID}] ${owner} purchased the Fensak App on the marketplace, but is not an allowed Org on this instance of Fensak.`,
     );
     return false;
@@ -86,7 +87,7 @@ async function orgInstalledApp(
 
   const ok = await storeGitHubOrg(newOrg, maybeOrg);
   if (!ok) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Could not store installation for ${newOrg.name}: conflicting record. Retrying.`,
     );
     return true;

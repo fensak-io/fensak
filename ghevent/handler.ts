@@ -8,6 +8,7 @@ import {
   GitHubPullRequestReviewEvent,
 } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import type { GitHubEventPayload } from "../svcdata/mod.ts";
 
 import { onPullRequest } from "./pullrequest.ts";
@@ -22,12 +23,12 @@ import { onMarketplacePurchase } from "./marketplace.ts";
 export async function handleGitHubEvent(
   msg: GitHubEventPayload,
 ): Promise<boolean> {
-  console.log(`[${msg.requestID}] Processing ${msg.eventName} event`);
+  logger.info(`[${msg.requestID}] Processing ${msg.eventName} event`);
 
   let retry = false;
   switch (msg.eventName) {
     default:
-      console.debug(
+      logger.debug(
         `[${msg.requestID}] Discarding github event ${msg.eventName}`,
       );
       return false;
@@ -61,6 +62,6 @@ export async function handleGitHubEvent(
       break;
   }
 
-  console.log(`[${msg.requestID}] Processed ${msg.eventName} event`);
+  logger.info(`[${msg.requestID}] Processed ${msg.eventName} event`);
   return retry;
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
+import { logger } from "../logging/mod.ts";
 import { handleGitHubEvent } from "../ghevent/mod.ts";
 import {
   enqueueMsg,
@@ -21,7 +22,7 @@ async function handler(msg: Message): Promise<void> {
   let retry = false;
   switch (msg.type) {
     case MessageType.Unknown:
-      console.log(
+      logger.info(
         `Received unknown message: ${msg.payload}. Ignoring message.`,
       );
       return;
@@ -36,12 +37,12 @@ async function handler(msg: Message): Promise<void> {
   }
 
   if (retry) {
-    console.warn("Retrying task with delay");
+    logger.warn("Retrying task with delay");
     await enqueueMsg(msg, retryDelay);
   }
 }
 
 async function handleHealthCheck(payload: HealthCheckPayload): Promise<void> {
-  console.debug(`Received healthcheck for request ${payload.requestID}`);
+  logger.debug(`Received healthcheck for request ${payload.requestID}`);
   await storeHealthCheckResult(payload.requestID);
 }

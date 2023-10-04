@@ -9,6 +9,7 @@ import type {
   GitHubUser,
 } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { mustGetGitHubOrg } from "../svcdata/mod.ts";
@@ -46,7 +47,7 @@ export async function onPullRequest(
 ): Promise<boolean> {
   switch (payload.action) {
     default:
-      console.debug(
+      logger.debug(
         `[${requestID}] Discarding github pull request event ${payload.action}`,
       );
       return false;
@@ -62,7 +63,7 @@ export async function onPullRequest(
     case "dismissed":
       // Validations to make sure this event requires processing.
       if (!payload.organization) {
-        console.warn(
+        logger.warn(
           `[${requestID}] No organization set for pull request event. Discarding.`,
         );
         return false;
@@ -95,7 +96,7 @@ async function runReviewRoutine(
   const headSHA = pullRequest.head.sha;
   const ghorg = await mustGetGitHubOrg(owner);
   if (enforceMarketplacePlan && !ghorg.marketplacePlan) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Ignoring pull request action for org ${owner} - no active marketplace plan on record.`,
     );
     return false;
@@ -112,7 +113,7 @@ async function runReviewRoutine(
 
   const cfg = await loadConfigFromGitHub(octokit, ghorg);
   if (!cfg) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,
     );
     return true;
@@ -120,7 +121,7 @@ async function runReviewRoutine(
 
   const repoCfg = cfg.orgConfig.repos[repoName];
   if (!repoCfg) {
-    console.debug(
+    logger.debug(
       `[${requestID}] No rules configured for repository ${repoName}.`,
     );
     return false;
@@ -128,7 +129,7 @@ async function runReviewRoutine(
 
   const ruleFn = cfg.ruleLookup[repoCfg.ruleFile];
   if (!ruleFn) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Compiled rule function could not be found for repository ${repoName}.`,
     );
     return false;
@@ -279,7 +280,7 @@ async function runReviewRoutine(
       details,
     );
   } catch (err) {
-    console.error(
+    logger.error(
       `[${requestID}] Error processing rule for pull request: ${err}`,
     );
     await completeCheck(

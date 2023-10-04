@@ -4,6 +4,7 @@
 import { config } from "../deps.ts";
 import type { GitHubMarketplacePurchaseEvent } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import {
   getGitHubOrgRecord,
   GitHubOrg,
@@ -11,6 +12,7 @@ import {
 } from "../svcdata/mod.ts";
 
 const defaultOrgRepoLimit = config.get("defaultOrgRepoLimit");
+const allowedOrgs: string[] | null = config.get("github.allowedOrgs");
 
 /**
  * Route the specific github marketplace sub event to the relevant core business logic to process it.
@@ -25,7 +27,7 @@ export async function onMarketplacePurchase(
   let retry = false;
   switch (payload.action) {
     default:
-      console.debug(
+      logger.debug(
         `[${requestID}] Discarding github marketplace event ${payload.action}`,
       );
       break;
@@ -33,7 +35,7 @@ export async function onMarketplacePurchase(
     case "purchased":
       retry = await orgPurchasedApp(requestID, payload);
       if (!retry) {
-        console.log(
+        logger.info(
           `[${requestID}] Successfully stored record for ${owner} in reaction to app install event.`,
         );
       }
@@ -42,7 +44,7 @@ export async function onMarketplacePurchase(
     case "cancelled":
       retry = await orgCancelledApp(requestID, payload);
       if (!retry) {
-        console.log(
+        logger.info(
           `[${requestID}] Successfully removed record for ${owner} in reaction to app delete event.`,
         );
       }
@@ -62,6 +64,15 @@ async function orgPurchasedApp(
   payload: GitHubMarketplacePurchaseEvent,
 ): Promise<boolean> {
   const owner = payload.marketplace_purchase.account.login;
+  if (
+    allowedOrgs != null && !allowedOrgs.includes(owner)
+  ) {
+    logger.warn(
+      `[${requestID}] ${owner} installed the Fensak App, but is not an allowed Org on this instance of Fensak.`,
+    );
+    return false;
+  }
+
   const newOrg: GitHubOrg = {
     name: owner,
     installationID: null,
@@ -77,7 +88,7 @@ async function orgPurchasedApp(
 
   const ok = await storeGitHubOrg(newOrg, maybeOrg);
   if (!ok) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Could not store marketplace plan for ${owner}: conflicting record. Retrying.`,
     );
     return true;
@@ -107,7 +118,7 @@ async function orgCancelledApp(
   updateOrg.marketplacePlan = null;
   const ok = await storeGitHubOrg(updateOrg, maybeOrg);
   if (!ok) {
-    console.warn(
+    logger.warn(
       `[${requestID}] Could not remove marketplace plan for ${owner}: conflicting record. Retrying.`,
     );
     return true;

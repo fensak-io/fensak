@@ -3,6 +3,7 @@
 
 import { Application, Router } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 
 import { attachRoutes } from "./routes.ts";
@@ -22,6 +23,6 @@ export async function startWebServer(): Promise<void> {
   app.use(router.allowedMethods());
 
   const port = 8080;
-  console.log(`Listening on 0.0.0.0:${port}`);
+  logger.info(`Listening on 0.0.0.0:${port}`);
   await app.listen({ port });
 }

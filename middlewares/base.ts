@@ -4,6 +4,8 @@
 import { Context, crypto, Status } from "../deps.ts";
 import type { Middleware, Next } from "../deps.ts";
 
+import { logger as projectLogger } from "../logging/mod.ts";
+
 const requestId: Middleware = async (ctx: Context, next: Next) => {
   let requestId = ctx.request.headers.get("X-Response-Id");
   if (!requestId) {
@@ -36,7 +38,7 @@ const error: Middleware = async (ctx: Context, next: Next) => {
   } catch (err) {
     const status = err.status || err.statusCode || Status.InternalServerError;
 
-    console.log(err.message);
+    projectLogger.error(err.message);
 
     ctx.response.status = status;
     ctx.response.body = { status, msg: "internal server error" };
@@ -68,12 +70,18 @@ const unsupportedRoute: Middleware = async (ctx: Context, next: Next) => {
 const logger: Middleware = async (ctx: Context, next: Next) => {
   await next();
 
-  const reqTime = ctx.response.headers.get("X-Response-Time");
-  const reqId = ctx.response.headers.get("X-Response-Id");
+  const reqID = ctx.response.headers.get("X-Response-Id");
+  const respTime = ctx.response.headers.get("X-Response-Time");
   const status = ctx.response.status;
-  console.log(
-    `${reqId} ${ctx.request.method} ${ctx.request.url} - status: ${status} (${reqTime})`,
-  );
+  projectLogger.log({
+    level: "info",
+    message: "serviced request",
+    requestID: reqID,
+    url: ctx.request.url,
+    method: ctx.request.method,
+    responseStatus: status,
+    responseTime: respTime,
+  });
 };
 
 export { error, logger, requestId, timing, unsupportedRoute };

@@ -3,6 +3,7 @@
 
 import { base64, config, Octokit, path, reng } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import { getDefaultHeadSHA } from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
@@ -72,7 +73,7 @@ export async function loadConfigFromGitHub(
     return null;
   }
 
-  console.log(`Fetching configuration from GitHub for ${ghorg.name}`);
+  logger.info(`Fetching configuration from GitHub for ${ghorg.name}`);
   try {
     const cfg = await fetchAndParseConfigFromDotFensak(clt, ghorg, headSHA);
     await storeComputedFensakConfig(FensakConfigSource.GitHub, ghorg.name, cfg);

@@ -15,7 +15,22 @@
     __name: "FENSAK_DEFAULT_ORG_REPO_LIMIT",
     __format: "number",
   },
+  logging: {
+    level: "FENSAK_LOGGING_LEVEL",
+    loki: {
+      enabled: {
+        __name: "FENSAK_LOGGING_LOKI_ENABLED",
+        __format: "boolean",
+      },
+      host: "FENSAK_LOGGING_LOKI_HOST",
+      basicAuth: "FENSAK_LOGGING_LOKI_BASIC_AUTH",
+    },
+  },
   github: {
+    allowedOrgs: {
+      __name: "FENSAK_GITHUB_ALLOWED_ORGS",
+      __format: "json",
+    },
     activeMarketplacePlanRequired: {
       __name: "FENSAK_GITHUB_ACTIVE_MARKETPLACE_PLAN_REQUIRED",
       __format: "boolean",

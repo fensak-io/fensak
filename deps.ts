@@ -19,6 +19,11 @@ export {
 } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export type { Middleware, Next } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 
+import winston from "npm:winston@^3.10.0";
+import WinstonTransport from "npm:winston-transport@^4.5.0";
+import WinstonLoki from "npm:winston-loki@^6.0.7";
+export { winston, WinstonLoki, WinstonTransport };
+
 export { Octokit } from "npm:@octokit/rest@^20.0.2";
 export type { components as GitHubComponents } from "npm:@octokit/openapi-types@^19.0.0";
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";

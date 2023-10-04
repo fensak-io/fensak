@@ -11,6 +11,7 @@ import {
 } from "../svcdata/mod.ts";
 
 const defaultOrgRepoLimit = config.get("defaultOrgRepoLimit");
+const allowedOrgs: string[] | null = config.get("github.allowedOrgs");
 
 /**
  * Route the specific github marketplace sub event to the relevant core business logic to process it.
@@ -62,6 +63,15 @@ async function orgPurchasedApp(
   payload: GitHubMarketplacePurchaseEvent,
 ): Promise<boolean> {
   const owner = payload.marketplace_purchase.account.login;
+  if (
+    allowedOrgs != null && !allowedOrgs.includes(owner)
+  ) {
+    console.warn(
+      `[${requestID}] ${owner} installed the Fensak App, but is not an allowed Org on this instance of Fensak.`,
+    );
+    return false;
+  }
+
   const newOrg: GitHubOrg = {
     name: owner,
     installationID: null,

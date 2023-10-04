@@ -31,9 +31,15 @@ Deno.test("sanity check fensak-stage on Deno Deploy is up to date", async () => 
   const respNotFound = await fetch(
     "https://fensak-stage.deno.dev/route-does-not-exist",
   );
+  if (respNotFound.body) {
+    await respNotFound.body.cancel();
+  }
   assertEquals(respNotFound.status, Status.NotFound);
 
   const resp = await fetch("https://fensak-stage.deno.dev/healthz");
+  if (resp.body) {
+    await resp.body.cancel();
+  }
   assertEquals(resp.status, Status.OK);
 });
 

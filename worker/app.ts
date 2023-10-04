@@ -7,8 +7,9 @@ import {
   listenQueue,
   Message,
   MessageType,
+  storeHealthCheckResult,
 } from "../svcdata/mod.ts";
-import type { GitHubEventPayload } from "../svcdata/mod.ts";
+import type { GitHubEventPayload, HealthCheckPayload } from "../svcdata/mod.ts";
 
 const retryDelay = 5 * 1000; // 5 seconds
 
@@ -25,6 +26,10 @@ async function handler(msg: Message): Promise<void> {
       );
       return;
 
+    case MessageType.HealthCheck:
+      await handleHealthCheck(msg.payload as HealthCheckPayload);
+      return;
+
     case MessageType.GitHubEvent:
       retry = await handleGitHubEvent(msg.payload as GitHubEventPayload);
       break;
@@ -34,4 +39,8 @@ async function handler(msg: Message): Promise<void> {
     console.warn("Retrying task with delay");
     await enqueueMsg(msg, retryDelay);
   }
+}
+
+async function handleHealthCheck(payload: HealthCheckPayload): Promise<void> {
+  await storeHealthCheckResult(payload.requestID);
 }

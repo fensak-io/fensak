@@ -4,11 +4,42 @@
 import { Context, GitHubWebhookEventName, Router, Status } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
-import { enqueueMsg, MessageType } from "../svcdata/mod.ts";
+import {
+  enqueueMsg,
+  MessageType,
+  waitForHealthCheckResult,
+} from "../svcdata/mod.ts";
+import { getRandomString } from "../xtd/mod.ts";
 
 export function attachRoutes(router: Router): void {
   router
+    .get("/healthz", healthCheck)
     .post("/hooks/gh", middlewares.assertGitHubWebhook, handleGitHubWebhooks);
+}
+
+async function healthCheck(ctx: Context): Promise<void> {
+  const requestID = getRandomString(6);
+  await enqueueMsg({
+    type: MessageType.HealthCheck,
+    payload: {
+      requestID: requestID,
+    },
+  });
+  const result = await waitForHealthCheckResult(requestID);
+  if (!result) {
+    ctx.response.status = Status.InternalServerError;
+    ctx.response.body = {
+      status: Status.InternalServerError,
+      msg: "timed out waiting for worker health result",
+    };
+    return;
+  }
+
+  ctx.response.status = Status.OK;
+  ctx.response.body = {
+    status: Status.OK,
+    msg: "system ok",
+  };
 }
 
 async function handleGitHubWebhooks(ctx: Context): Promise<void> {

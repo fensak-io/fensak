@@ -12,6 +12,7 @@ import {
 } from "../svcdata/mod.ts";
 
 const defaultOrgRepoLimit = config.get("defaultOrgRepoLimit");
+const allowedOrgs: string[] | null = config.get("github.allowedOrgs");
 
 /**
  * Route the specific github app management (aka installation) sub event to the relevant core business logic to process
@@ -61,14 +62,24 @@ async function orgInstalledApp(
   requestID: string,
   payload: GitHubInstallationEvent,
 ): Promise<boolean> {
+  const owner = payload.installation.account.login;
+  if (
+    allowedOrgs != null && !allowedOrgs.includes(owner)
+  ) {
+    console.warn(
+      `[${requestID}] ${owner} purchased the Fensak App on the marketplace, but is not an allowed Org on this instance of Fensak.`,
+    );
+    return false;
+  }
+
   const newOrg: GitHubOrg = {
-    name: payload.installation.account.login,
+    name: owner,
     installationID: payload.installation.id,
     repoLimit: defaultOrgRepoLimit,
     marketplacePlan: null,
   };
 
-  const maybeOrg = await getGitHubOrgRecord(payload.installation.account.login);
+  const maybeOrg = await getGitHubOrgRecord(owner);
   if (maybeOrg.value) {
     newOrg.marketplacePlan = maybeOrg.value.marketplacePlan;
   }

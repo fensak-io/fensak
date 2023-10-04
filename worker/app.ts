@@ -42,6 +42,6 @@ async function handler(msg: Message): Promise<void> {
 }
 
 async function handleHealthCheck(payload: HealthCheckPayload): Promise<void> {
-  console.log(`Received healthcheck for request ${payload.requestID}`);
+  console.debug(`Received healthcheck for request ${payload.requestID}`);
   await storeHealthCheckResult(payload.requestID);
 }

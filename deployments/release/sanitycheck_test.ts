@@ -8,7 +8,8 @@
  * This suite is meant to run on PRs to the `release` branch, prior to deployment to prod.
  */
 
-import { Octokit } from "../../deps.ts";
+import { assertEquals } from "../../test_deps.ts";
+import { Octokit, Status } from "../../deps.ts";
 
 import { getHeadSHA } from "../../ghstd/mod.ts";
 import { sleep } from "../../xtd/mod.ts";
@@ -26,6 +27,14 @@ const fensakAdminOctokit = new Octokit({ auth: fensakAdminToken });
 
 Deno.test("sanity check fensak-stage on Deno Deploy is up to date", async () => {
   await waitForDenoDeploy(fensakAdminOctokit);
+
+  const respNotFound = await fetch(
+    "https://fensak-stage.deno.dev/route-does-not-exist",
+  );
+  assertEquals(respNotFound.status, Status.NotFound);
+
+  const resp = await fetch("https://fensak-stage.deno.dev/healthz");
+  assertEquals(resp.status, Status.OK);
 });
 
 /**

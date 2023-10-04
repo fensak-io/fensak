@@ -47,11 +47,19 @@ const unsupportedRoute: Middleware = async (ctx: Context, next: Next) => {
   await next();
 
   const status = ctx.response.status;
+
+  // NOTE
+  // It seems counter intuitive that we have to reset the status in the switch statement, but this is necessary because
+  // `ctx.response` uses magic methods for accessing and setting the status. That is, `status` could return `NotFound`
+  // even if it is not explicitly set to `NotFound`. So we need to set it explicitly to ensure it gets set to the right
+  // value.
   switch (status) {
     case Status.NotFound:
+      ctx.response.status = status;
       ctx.response.body = { status, msg: "not found" };
       break;
     case Status.MethodNotAllowed:
+      ctx.response.status = status;
       ctx.response.body = { status, msg: "method not allowed" };
       break;
   }

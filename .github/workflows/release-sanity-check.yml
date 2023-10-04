@@ -14,7 +14,7 @@ jobs:
   sanitycheck:
     runs-on: ubuntu-latest
     permissions:
-      checks: read
+      checks: write # Needed for GHA to write the checks for the job
       contents: read
     steps:
       - name: halt pipeline if merging from non-main branch

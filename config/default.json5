@@ -6,6 +6,9 @@
 // Many of these are secrets, and thus are sourced from environment variables
 // (see ./custom-environment-variables.json5).
 {
+  // A user defined identifier for the service environment. This string will be included in every log entry.
+  env: "dev",
+
   // The maximum size of config files that can be accepted (in bytes).
   configFileSizeLimit: 1024000,
 

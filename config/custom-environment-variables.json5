@@ -16,6 +16,10 @@
     __format: "number",
   },
   github: {
+    allowedOrgs: {
+      __name: "FENSAK_GITHUB_ALLOWED_ORGS",
+      __format: "json",
+    },
     activeMarketplacePlanRequired: {
       __name: "FENSAK_GITHUB_ACTIVE_MARKETPLACE_PLAN_REQUIRED",
       __format: "boolean",

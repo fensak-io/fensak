@@ -19,6 +19,13 @@
    * Settings/Secrets related to interacting with GitHub.
    */
   github: {
+    // A list of allowed Organizations (by slug) in GitHub that are allowed to use this instance of Fensak. This is
+    // useful for guarding your self-hosted instances from being installed and used by unknown Orgs when you need to use
+    // Fensak with more than one Org (since GitHub doesn't have a way to restrict app installs beyond just the single
+    // Org that owns the App).
+    // When null, all Orgs will be allowed.
+    allowedOrgs: null,
+
     // Whether an active GitHub Marketplace plan is required to maintain an active account. When disabled, all
     // functionality will be made available if the user has the app installed, regardless of a corresponding Marketplace
     // plan.

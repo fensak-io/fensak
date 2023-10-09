@@ -22,8 +22,16 @@
   // will be made available if the user has the app installed, regardless of a corresponding Subscription plan.
   activeSubscriptionPlanRequired: true,
 
-  // Whether to enable the management API.
-  enableManagementAPI: true,
+  /**
+   * Settings related to the management API.
+   */
+  managementAPI: {
+    // Whether to enable the management API.
+    enabled: true,
+
+    // Allowed CORS origins.
+    allowedCORSOrigins: [],
+  },
 
   /**
    * Settings/Secrets related to logging.

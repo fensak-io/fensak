@@ -20,9 +20,15 @@
     __name: "FENSAK_ACTIVE_SUBSCRIPTION_PLAN_REQUIRED",
     __format: "boolean",
   },
-  enableManagementAPI: {
-    __name: "FENSAK_ENABLE_MANAGEMENT_API",
-    __format: "boolean",
+  managementAPI: {
+    enabled: {
+      __name: "FENSAK_MANAGEMENT_API_ENABLED",
+      __format: "boolean",
+    },
+    allowedCORSOrigins: {
+      __name: "FENSAK_MANAGEMENT_API_ALLOWED_CORS_ORIGINS",
+      __format: "json",
+    },
   },
   logging: {
     level: "FENSAK_LOGGING_LEVEL",

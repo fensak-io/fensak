@@ -1,18 +1,26 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { Context, Router, Status } from "../deps.ts";
+import { config, Context, oakCors, Router, Status } from "../deps.ts";
 
 import type { Organization } from "../apidata/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 import { getGitHubOrgRecord } from "../svcdata/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { isOrgManager } from "../ghstd/mod.ts";
+import { logger } from "../logging/mod.ts";
+
+const corsOrigins = config.get("managementAPI.allowedCORSOrigins");
 
 export function attachAPIRoutes(router: Router): void {
+  const corsMW = oakCors({ origin: corsOrigins });
+  logger.debug(`WTF: ${corsOrigins}`);
+
   router
+    .options("/api/v1/organizations", corsMW)
     .get(
       "/api/v1/organizations",
+      corsMW,
       middlewares.assertAPIToken,
       handleGetOrganizations,
     );

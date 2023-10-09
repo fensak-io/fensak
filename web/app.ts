@@ -9,7 +9,7 @@ import * as middlewares from "../middlewares/mod.ts";
 import { attachRoutes } from "./routes.ts";
 import { attachAPIRoutes } from "./api_routes.ts";
 
-const enableMgmtAPI = config.get("enableManagementAPI");
+const enableMgmtAPI = config.get("managementAPI.enabled");
 
 export async function startWebServer(): Promise<void> {
   const app = new Application();

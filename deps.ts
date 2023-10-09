@@ -18,6 +18,7 @@ export {
   Status,
 } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export type { Middleware, Next } from "https://deno.land/x/oak@v12.6.1/mod.ts";
+export { oakCors } from "https://deno.land/x/cors@v1.2.1/mod.ts";
 
 import winston from "npm:winston@^3.10.0";
 import WinstonTransport from "npm:winston-transport@^4.5.0";

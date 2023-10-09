@@ -19,7 +19,7 @@ export const assertAPIToken: Middleware = async (
 ): Promise<void> => {
   const auth = ctx.request.headers.get("Authorization");
   if (!auth || !auth.startsWith("Bearer ")) {
-    logger.debug("Authorization header missing or is not bearer");
+    logger.debug(`Authorization header missing or is not bearer`);
     returnUnauthorizedResp(ctx);
     return;
   }

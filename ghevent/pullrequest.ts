@@ -20,8 +20,8 @@ import {
   initializeCheck,
 } from "./checks.ts";
 
-const enforceMarketplacePlan = config.get(
-  "github.activeMarketplacePlanRequired",
+const enforceSubscriptionPlan = config.get(
+  "activeSubscriptionPlanRequired",
 );
 const permissionsWithWriteAccess = [
   "admin",
@@ -95,9 +95,9 @@ async function runReviewRoutine(
   const prNum = pullRequest.number;
   const headSHA = pullRequest.head.sha;
   const ghorg = await mustGetGitHubOrg(owner);
-  if (enforceMarketplacePlan && !ghorg.marketplacePlan) {
+  if (enforceSubscriptionPlan && !ghorg.subscriptionID) {
     logger.warn(
-      `[${requestID}] Ignoring pull request action for org ${owner} - no active marketplace plan on record.`,
+      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
     );
     return false;
   }

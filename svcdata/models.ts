@@ -12,17 +12,25 @@ export interface Lock {
 }
 
 /**
+ * Represents a Fensak Subscription. Each subscription can be associated with multiple Orgs.
+ * @property id The unique ID to identify the subscription. Typically a UUID.
+ * @property repoLimit The maximum number of repositories that can be configured with Fensak.
+ */
+export interface Subscription {
+  id: string;
+  repoLimit: number;
+}
+
+/**
  * Represents a GitHub organization that has installed Fensak.
  * @property name The name (in slug form) of the GitHub organization.
  * @property installationID The installation ID of the GitHub app. Used for authentication.
- * @property repoLimit The maximum number of repositories that can be configured with Fensak.
- * @property markerplacePlan The specific plan that was purchased for the org on the GitHub marketplace.
+ * @property subscriptionID The associated subscription plan for the Org.
  */
 export interface GitHubOrg {
   name: string;
   installationID: number | null;
-  repoLimit: number;
-  marketplacePlan: string | null;
+  subscriptionID: string | null;
 }
 
 /**

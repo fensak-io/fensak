@@ -16,6 +16,14 @@
     __name: "FENSAK_DEFAULT_ORG_REPO_LIMIT",
     __format: "number",
   },
+  activeMarketplacePlanRequired: {
+    __name: "FENSAK_ACTIVE_SUBSCRIPTION_PLAN_REQUIRED",
+    __format: "boolean",
+  },
+  enableManagementAPI: {
+    __name: "FENSAK_ENABLE_MANAGEMENT_API",
+    __format: "boolean",
+  },
   logging: {
     level: "FENSAK_LOGGING_LEVEL",
     loki: {
@@ -32,10 +40,6 @@
       __name: "FENSAK_GITHUB_ALLOWED_ORGS",
       __format: "json",
     },
-    activeMarketplacePlanRequired: {
-      __name: "FENSAK_GITHUB_ACTIVE_MARKETPLACE_PLAN_REQUIRED",
-      __format: "boolean",
-    },
     webhookSecret: "FENSAK_GITHUB_WEBHOOK_SECRET",
     app: {
       appID: {
@@ -43,6 +47,10 @@
         "__format": "number",
       },
       privateKey: "FENSAK_GITHUB_APP_PRIVATE_KEY",
+    },
+    oauthApp: {
+      clientID: "FENSAK_GITHUB_OAUTH_APP_CLIENT_ID",
+      clientSecret: "FENSAK_GITHUB_OAUTH_APP_CLIENT_SECRET",
     },
     apiToken: "FENSAK_GITHUB_TOKEN",
   },

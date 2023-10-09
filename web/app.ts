@@ -1,12 +1,15 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { Application, Router } from "../deps.ts";
+import { Application, config, Router } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 
 import { attachRoutes } from "./routes.ts";
+import { attachAPIRoutes } from "./api_routes.ts";
+
+const enableMgmtAPI = config.get("enableManagementAPI");
 
 export async function startWebServer(): Promise<void> {
   const app = new Application();
@@ -19,6 +22,9 @@ export async function startWebServer(): Promise<void> {
 
   const router = new Router();
   attachRoutes(router);
+  if (enableMgmtAPI) {
+    attachAPIRoutes(router);
+  }
   app.use(router.routes());
   app.use(router.allowedMethods());
 

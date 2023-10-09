@@ -51,6 +51,8 @@ export {
 };
 // Must use esm.sh version for auth-app. See https://github.com/octokit/auth-app.js/issues/465
 export { createAppAuth as octokitCreateAppAuth } from "https://esm.sh/@octokit/auth-app@6.0.1";
+// Must use esm.sh version for auth-oauth-app. See https://github.com/octokit/auth-app.js/issues/465
+export { createOAuthAppAuth as octokitCreateOAuthAppAuth } from "https://esm.sh/@octokit/auth-oauth-app@7.0.1";
 
 // See https://github.com/ajv-validator/ajv/issues/2132
 import _Ajv from "npm:ajv@^8.12.0";

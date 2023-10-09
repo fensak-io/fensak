@@ -1,21 +1,13 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertRejects,
-} from "../test_deps.ts";
+import { assert, assertEquals, assertExists } from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 import type { GitHubOrg } from "../svcdata/mod.ts";
 
-import {
-  fetchAndParseConfigFromDotFensak,
-  loadConfigFromGitHub,
-} from "./loader_github.ts";
+import { loadConfigFromGitHub } from "./loader_github.ts";
 
 const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
@@ -23,8 +15,7 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   const testOrg: GitHubOrg = {
     name: "fensak-test",
     installationID: 0,
-    repoLimit: 100,
-    marketplacePlan: "pro",
+    subscriptionID: "pro",
   };
 
   const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
@@ -76,24 +67,4 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
 
   // TODO
   // add some basic testing for the compiled rule source
-});
-
-Deno.test("loadConfigFromGitHub checks repo limits", async () => {
-  const testOrg: GitHubOrg = {
-    name: "fensak-test",
-    installationID: 0,
-    repoLimit: 1,
-    marketplacePlan: "pro",
-  };
-
-  await assertRejects(
-    () =>
-      fetchAndParseConfigFromDotFensak(
-        octokitRestTestClt,
-        testOrg,
-        expectedHeadSHA,
-      ),
-    Error,
-    "exceeds the repo limit for the org",
-  );
 });

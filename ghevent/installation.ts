@@ -76,13 +76,12 @@ async function orgInstalledApp(
   const newOrg: GitHubOrg = {
     name: owner,
     installationID: payload.installation.id,
-    repoLimit: defaultOrgRepoLimit,
-    marketplacePlan: null,
+    subscriptionID: null,
   };
 
   const maybeOrg = await getGitHubOrgRecord(owner);
   if (maybeOrg.value) {
-    newOrg.marketplacePlan = maybeOrg.value.marketplacePlan;
+    newOrg.subscriptionID = maybeOrg.value.subscriptionID;
   }
 
   const ok = await storeGitHubOrg(newOrg, maybeOrg);

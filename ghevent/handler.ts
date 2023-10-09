@@ -13,7 +13,6 @@ import type { GitHubEventPayload } from "../svcdata/mod.ts";
 
 import { onPullRequest } from "./pullrequest.ts";
 import { onAppMgmt } from "./installation.ts";
-import { onMarketplacePurchase } from "./marketplace.ts";
 
 /**
  * Handles the given GitHub event.
@@ -37,13 +36,6 @@ export async function handleGitHubEvent(
       retry = await onAppMgmt(
         msg.requestID,
         msg.payload as GitHubInstallationEvent,
-      );
-      break;
-
-    case "marketplace_purchase":
-      retry = await onMarketplacePurchase(
-        msg.requestID,
-        msg.payload as GitHubMarketplacePurchaseEvent,
       );
       break;
 

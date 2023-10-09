@@ -5,6 +5,7 @@ export {
   crypto,
   toHashString,
 } from "https://deno.land/std@0.202.0/crypto/mod.ts";
+export { timingSafeEqual } from "https://deno.land/std@0.202.0/crypto/timing_safe_equal.ts";
 export * as hex from "https://deno.land/std@0.202.0/encoding/hex.ts";
 export * as base64 from "https://deno.land/std@0.202.0/encoding/base64.ts";
 export * as path from "https://deno.land/std@0.202.0/path/mod.ts";
@@ -30,7 +31,6 @@ export type { components as GitHubComponents } from "npm:@octokit/openapi-types@
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 export type {
   InstallationEvent as GitHubInstallationEvent,
-  MarketplacePurchaseEvent as GitHubMarketplacePurchaseEvent,
   PullRequest as GitHubPullRequest,
   PullRequestEvent as GitHubPullRequestEvent,
   PullRequestReviewEvent as GitHubPullRequestReviewEvent,

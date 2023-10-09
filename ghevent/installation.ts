@@ -12,7 +12,6 @@ import {
   storeGitHubOrg,
 } from "../svcdata/mod.ts";
 
-const defaultOrgRepoLimit = config.get("defaultOrgRepoLimit");
 const allowedOrgs: string[] | null = config.get("github.allowedOrgs");
 
 /**

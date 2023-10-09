@@ -7,4 +7,4 @@
  */
 export * from "./base.ts";
 export * from "./ghevent.ts";
-export * from "./api.ts";
+export * from "./mgmt.ts";

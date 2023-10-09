@@ -5,6 +5,7 @@ import { config, Context, Status } from "../deps.ts";
 import type { Middleware, Next } from "../deps.ts";
 
 import { octokitFromOauthApp } from "../ghauth/mod.ts";
+import { verifyMgmtEvent } from "../mgmt/mod.ts";
 import { logger } from "../logging/mod.ts";
 
 const githubOauthClientID = config.get("github.oauthApp.clientID");
@@ -12,6 +13,27 @@ const githubOauthClientID = config.get("github.oauthApp.clientID");
 export enum APITokenSource {
   GitHub = 0,
 }
+
+export const assertMgmtEvent: Middleware = async (
+  ctx: Context,
+  next: Next,
+): Promise<void> => {
+  const fskSig = ctx.request.headers.get("X-Fsk-Signature-256");
+  if (fskSig == null) {
+    returnInvalidFskEventHook(ctx);
+    return;
+  }
+
+  const body = ctx.request.body({ type: "text" });
+  const bodyText = await body.value;
+  const isValid = await verifyMgmtEvent(bodyText, fskSig);
+  if (!isValid) {
+    returnInvalidFskEventHook(ctx);
+    return;
+  }
+
+  await next();
+};
 
 export const assertAPIToken: Middleware = async (
   ctx: Context,
@@ -54,6 +76,15 @@ export const assertAPIToken: Middleware = async (
 
   await next();
 };
+
+function returnInvalidFskEventHook(ctx: Context): void {
+  const respStatus = Status.Forbidden;
+  ctx.response.status = respStatus;
+  ctx.response.body = {
+    status: respStatus,
+    msg: "Could not verify fensak signature.",
+  };
+}
 
 function returnUnauthorizedResp(ctx: Context): void {
   const respStatus = Status.Forbidden;

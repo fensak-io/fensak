@@ -3,7 +3,6 @@
 
 import {
   GitHubInstallationEvent,
-  GitHubMarketplacePurchaseEvent,
   GitHubPullRequestEvent,
   GitHubPullRequestReviewEvent,
 } from "../deps.ts";

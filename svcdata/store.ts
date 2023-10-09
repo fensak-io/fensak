@@ -7,10 +7,17 @@ import { logger } from "../logging/mod.ts";
 import { sleep } from "../xtd/mod.ts";
 
 import { mainKV } from "./svc.ts";
-import { ComputedFensakConfig, GitHubOrg, Lock } from "./models.ts";
+import {
+  ComputedFensakConfig,
+  GitHubOrg,
+  GitHubOrgWithSubscription,
+  Lock,
+  Subscription,
+} from "./models.ts";
 
 enum TableNames {
   HealthCheck = "healthcheck",
+  Subscription = "subscription",
   GitHubOrg = "github_org",
   FensakConfig = "fensak_config",
   Lock = "lock",
@@ -116,6 +123,48 @@ export async function releaseLock(lock: Lock): Promise<void> {
 }
 
 /**
+ * Stores the subscription into the KV store.
+ * @returns Whether the record was successfully stored.
+ */
+export async function storeSubscription(
+  subscription: Subscription,
+  existingSubRecord?: Deno.KvEntryMaybe<Subscription>,
+): Promise<boolean> {
+  const key = [TableNames.Subscription, subscription.id];
+
+  if (!existingSubRecord) {
+    await mainKV.set(key, subscription);
+    return true;
+  }
+
+  const { ok } = await mainKV.atomic()
+    .check(existingSubRecord)
+    .set(key, subscription)
+    .commit();
+  return ok;
+}
+
+/**
+ * Gets the subscription by the given ID.
+ * @returns The subscription object for the ID.
+ */
+export async function getSubscription(
+  id: string,
+): Promise<Deno.KvEntryMaybe<Subscription>> {
+  return await mainKV.get<Subscription>([TableNames.Subscription, id]);
+}
+
+/**
+ * Deletes the given subscription from the KV store.
+ *
+ * TODO
+ * Disassociate subscription from all the associated GitHub orgs.
+ */
+export async function deleteSubscription(id: string): Promise<void> {
+  await mainKV.delete([TableNames.Subscription, id]);
+}
+
+/**
  * Stores the github organization into the KV store so that we can lookup the installation ID to authenticate as the
  * Org. If existingOrgRecord is provided, this will do an atomic check to make sure the state hasn't changed.
  * @returns Whether the record was successfully stored.
@@ -174,6 +223,46 @@ export async function mustGetGitHubOrg(orgName: string): Promise<GitHubOrg> {
     throw new Error(`no installation found for GitHub Org ${orgName}`);
   }
   return entry.value;
+}
+
+/**
+ * Retrieves the github organization with the subscription data from the KV store. This will throw an error if there is
+ * no record of the corresponding organization.
+ *
+ * Note that this will also update the github org if it has a subscriptionID associated with it and the subscription
+ * doesn't exist.
+ */
+export async function mustGetGitHubOrgWithSubscription(
+  orgName: string,
+): Promise<GitHubOrgWithSubscription> {
+  const entry = await mainKV.get<GitHubOrg>([TableNames.GitHubOrg, orgName]);
+  if (!entry.value) {
+    throw new Error(`no installation found for GitHub Org ${orgName}`);
+  }
+
+  const out: GitHubOrgWithSubscription = {
+    name: entry.value.name,
+    installationID: entry.value.installationID,
+    subscription: null,
+  };
+  if (entry.value.subscriptionID) {
+    const sub = await getSubscription(entry.value.subscriptionID);
+    if (!sub.value) {
+      // Subscription doesn't exist, so update GitHub Org to remove that link.
+      const ghorg = { ...entry.value };
+      ghorg.subscriptionID = null;
+      const ok = await storeGitHubOrg(ghorg, entry);
+      if (!ok) {
+        throw new Error(
+          `could not update outdated subscription info for GitHub Org ${orgName}`,
+        );
+      }
+    } else {
+      out.subscription = sub.value;
+    }
+  }
+
+  return out;
 }
 
 /**

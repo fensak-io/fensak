@@ -7,7 +7,7 @@ import { logger } from "../logging/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 
 import { attachRoutes } from "./routes.ts";
-import { attachAPIRoutes } from "./api_routes.ts";
+import { attachMgmtAPIRoutes } from "./mgmt_routes.ts";
 
 const enableMgmtAPI = config.get("managementAPI.enabled");
 
@@ -23,7 +23,7 @@ export async function startWebServer(): Promise<void> {
   const router = new Router();
   attachRoutes(router);
   if (enableMgmtAPI) {
-    attachAPIRoutes(router);
+    attachMgmtAPIRoutes(router);
   }
   app.use(router.routes());
   app.use(router.allowedMethods());

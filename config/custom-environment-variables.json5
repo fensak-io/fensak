@@ -25,6 +25,7 @@
       __name: "FENSAK_MANAGEMENT_API_ENABLED",
       __format: "boolean",
     },
+    eventSecretKey: "FENSAK_MANAGEMENT_API_EVENT_SECRET_KEY",
     allowedCORSOrigins: {
       __name: "FENSAK_MANAGEMENT_API_ALLOWED_CORS_ORIGINS",
       __format: "json",

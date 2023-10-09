@@ -29,6 +29,9 @@
     // Whether to enable the management API.
     enabled: true,
 
+    // The secret key for signing webhook events.
+    eventSecretKey: "",
+
     // Allowed CORS origins.
     allowedCORSOrigins: [],
   },

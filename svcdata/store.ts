@@ -123,7 +123,7 @@ export async function releaseLock(lock: Lock): Promise<void> {
 }
 
 /**
- * Stores the subscription into the KV store.
+ * Stores the subscription into the KV store. This will also create or update the record for the GitHub Organization.
  * @returns Whether the record was successfully stored.
  */
 export async function storeSubscription(
@@ -132,15 +132,31 @@ export async function storeSubscription(
 ): Promise<boolean> {
   const key = [TableNames.Subscription, subscription.id];
 
-  if (!existingSubRecord) {
-    await mainKV.set(key, subscription);
-    return true;
+  let staged;
+  if (existingSubRecord) {
+    staged = mainKV.atomic()
+      .check(existingSubRecord)
+      .set(key, subscription);
+  } else {
+    staged = mainKV.atomic().set(key, subscription);
   }
 
-  const { ok } = await mainKV.atomic()
-    .check(existingSubRecord)
-    .set(key, subscription)
-    .commit();
+  const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
+  const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
+  staged = staged.check(existingOrg);
+  if (existingOrg.value) {
+    const org = { ...existingOrg.value };
+    org.subscriptionID = subscription.id;
+    staged = staged.set(orgKey, org);
+  } else {
+    staged = staged.set(orgKey, {
+      name: subscription.mainOrgName,
+      installationID: null,
+      subscriptionID: subscription.id,
+    });
+  }
+
+  const { ok } = await staged.commit();
   return ok;
 }
 

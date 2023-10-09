@@ -47,6 +47,10 @@ async function handleSubscriptionCreatedEvent(
     return;
   }
 
+  logger.debug(
+    `Received new subscription ${data.id} for org ${data.mainOrgName} with ${data.planName} plan`,
+  );
+
   const newSub = {
     id: data.id,
     mainOrgName: data.mainOrgName,

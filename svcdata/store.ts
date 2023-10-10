@@ -317,14 +317,40 @@ export async function mustGetGitHubOrgWithSubscription(
 }
 
 /**
- * Stores the computed fensak configuration for the given org.
+ * Stores the computed fensak configuration for the given org. If a subscriptionID is passed in, then this will
+ * atomically increment the repo count on the associated subscription object.
  */
 export async function storeComputedFensakConfig(
   cfgSrc: FensakConfigSource,
   orgName: string,
   cfg: ComputedFensakConfig,
+  subscriptionID?: string,
 ): Promise<void> {
-  await mainKV.set([TableNames.FensakConfig, cfgSrc, orgName], cfg);
+  const cfgKey = [TableNames.FensakConfig, cfgSrc, orgName];
+  if (!subscriptionID) {
+    await mainKV.set(cfgKey, cfg);
+    return;
+  }
+
+  const existingSub = await getSubscription(subscriptionID);
+  if (!existingSub.value) {
+    // Fail loudly since this is a bug condition.
+    throw new Error(
+      "storeComputedFensakConfig expects an existing subscription object when subscriptionID is set",
+    );
+  }
+  const sub = { ...existingSub.value };
+  sub.repoCount += Object.keys(cfg.orgConfig.repos).length;
+  const { ok } = await mainKV.atomic()
+    .check(existingSub)
+    .set(existingSub.key, sub)
+    .set(cfgKey, cfg)
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not store fensak config and update subscription repo count for org ${orgName}`,
+    );
+  }
 }
 
 /**

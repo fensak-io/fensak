@@ -12,9 +12,12 @@ export interface Organization {
   subscription_id: string | null;
 }
 
-export async function filterAllowedOrgsForUser(
+/**
+ * Filters down the given GitHub Orgs (identified by slug) based on whether the authenticated user of the Octokit client
+ * is an admin of the org.
+ */
+export async function filterAllowedGitHubOrgsForAuthenticatedUser(
   octokit: Octokit,
-  user: string,
   slugs: string[],
 ): Promise<Organization[]> {
   const orgData = await Promise.all(slugs.map((sl) => getGitHubOrgRecord(sl)));
@@ -24,7 +27,7 @@ export async function filterAllowedOrgsForUser(
         return null;
       }
 
-      const isAllowed = await isOrgManager(octokit, user, od.value.name);
+      const isAllowed = await isOrgManager(octokit, od.value.name);
       if (!isAllowed) {
         return null;
       }

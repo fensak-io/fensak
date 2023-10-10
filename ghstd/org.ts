@@ -8,13 +8,11 @@ import { Octokit } from "../deps.ts";
  */
 export async function isOrgManager(
   octokit: Octokit,
-  user: string,
   org: string,
 ): Promise<boolean> {
   try {
-    const { data } = await octokit.orgs.getMembershipForUser({
+    const { data } = await octokit.orgs.getMembershipForAuthenticatedUser({
       org: org,
-      username: user,
     });
     return data.role === "admin";
   } catch (_e) {

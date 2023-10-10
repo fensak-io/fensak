@@ -5,7 +5,7 @@ import { config, Context, oakCors, Octokit, Router, Status } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
 import {
-  filterAllowedOrgsForUser,
+  filterAllowedGitHubOrgsForAuthenticatedUser,
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
 import { getSubscription } from "../svcdata/mod.ts";
@@ -25,7 +25,7 @@ export function attachMgmtAPIRoutes(router: Router): void {
     .get(
       "/api/v1/organizations",
       corsMW,
-      middlewares.assertAPIToken,
+      middlewares.assertMgmtAPIToken,
       handleGetOrganizations,
     );
 }
@@ -44,11 +44,9 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
 
   const token = ctx.state.apiToken;
   const octokit = new Octokit({ auth: token });
-  const authedUser = ctx.state.apiAuthedUser;
   const slugs = ctx.request.url.searchParams.getAll("slugs");
-  const allowedOrgs = await filterAllowedOrgsForUser(
+  const allowedOrgs = await filterAllowedGitHubOrgsForAuthenticatedUser(
     octokit,
-    authedUser,
     slugs,
   );
 

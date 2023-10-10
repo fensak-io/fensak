@@ -7,10 +7,9 @@ import { logger } from "../logging/mod.ts";
 import { getDefaultHeadSHA } from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
-  GitHubOrg,
+  GitHubOrgWithSubscription,
   OrgConfig,
   RuleLookup,
-  Subscription,
 } from "../svcdata/mod.ts";
 import {
   acquireLock,
@@ -53,14 +52,12 @@ interface IGitFileInfo {
  * Note that only one active thread will fetch the config directly from GitHub to avoid hitting API rate limits.
  *
  * @param clt An authenticated Octokit instance.
- * @param subscription The Fensak subscription associated with the GitHub Org.
- * @param ghorg The GitHub org to load the config for.
+ * @param ghorg The GitHub org to load the config for, with the associated subscription marshalled.
  * @return The computed Fensak config for the GitHub org. Returns null if another thread is fetching the config.
  */
 export async function loadConfigFromGitHub(
   clt: Octokit,
-  subscription: Subscription | null,
-  ghorg: GitHubOrg,
+  ghorg: GitHubOrgWithSubscription,
 ): Promise<ComputedFensakConfig | null> {
   const headSHA = await getDefaultHeadSHA(clt, ghorg.name, fensakCfgRepoName);
 
@@ -84,11 +81,15 @@ export async function loadConfigFromGitHub(
   try {
     const cfg = await fetchAndParseConfigFromDotFensak(
       clt,
-      subscription,
       ghorg,
       headSHA,
     );
-    await storeComputedFensakConfig(FensakConfigSource.GitHub, ghorg.name, cfg);
+    await storeComputedFensakConfig(
+      FensakConfigSource.GitHub,
+      ghorg.name,
+      cfg,
+      ghorg.subscription?.id,
+    );
     return cfg;
   } finally {
     await releaseLock(lock);
@@ -97,8 +98,7 @@ export async function loadConfigFromGitHub(
 
 export async function fetchAndParseConfigFromDotFensak(
   clt: Octokit,
-  subscription: Subscription | null,
-  ghorg: GitHubOrg,
+  ghorg: GitHubOrgWithSubscription,
   headSHA: string,
 ): Promise<ComputedFensakConfig> {
   const fileLookup = await getFileLookup(clt, ghorg.name, headSHA);
@@ -117,7 +117,6 @@ export async function fetchAndParseConfigFromDotFensak(
   const orgCfgContents = await loadFileContents(clt, ghorg.name, cfgFinfo);
   const orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
   validateRepoLimits(
-    subscription,
     ghorg,
     Object.keys(orgCfg.repos).length,
   );
@@ -275,8 +274,7 @@ async function loadRuleFiles(
 }
 
 function validateRepoLimits(
-  subscription: Subscription | null,
-  ghorg: GitHubOrg,
+  ghorg: GitHubOrgWithSubscription,
   configRepoCount: number,
 ): void {
   const noActiveSubErr = new Error(
@@ -287,16 +285,16 @@ function validateRepoLimits(
     // Allowing unlimited repos since we aren't enforcing subscription plans.
     return;
   }
-  if (subscription == null) {
+  if (ghorg.subscription == null) {
     throw noActiveSubErr;
   }
 
-  let maybeLimit = planRepoLimits[subscription.planName];
+  let maybeLimit = planRepoLimits[ghorg.subscription.planName];
   if (!maybeLimit) {
     maybeLimit = planRepoLimits[""];
   }
 
-  const totalRepoCount = configRepoCount + subscription.repoCount;
+  const totalRepoCount = configRepoCount + ghorg.subscription.repoCount;
   if (totalRepoCount > maybeLimit) {
     throw new Error(
       `the config file for ${ghorg.name} exceeds the repo limit for the org (limit is ${maybeLimit})`,

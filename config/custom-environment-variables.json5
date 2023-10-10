@@ -12,7 +12,7 @@
     __name: "FENSAK_RULES_FILE_SIZE_LIMIT",
     __format: "number",
   },
-  activeMarketplacePlanRequired: {
+  activeSubscriptionPlanRequired: {
     __name: "FENSAK_ACTIVE_SUBSCRIPTION_PLAN_REQUIRED",
     __format: "boolean",
   },

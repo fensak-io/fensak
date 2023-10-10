@@ -35,7 +35,7 @@ export const assertMgmtEvent: Middleware = async (
   await next();
 };
 
-export const assertAPIToken: Middleware = async (
+export const assertMgmtAPIToken: Middleware = async (
   ctx: Context,
   next: Next,
 ): Promise<void> => {

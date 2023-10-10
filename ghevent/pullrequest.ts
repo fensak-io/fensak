@@ -12,8 +12,7 @@ import type {
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
-import type { Subscription } from "../svcdata/mod.ts";
-import { getSubscription, mustGetGitHubOrg } from "../svcdata/mod.ts";
+import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
 
 import {
   completeCheck,
@@ -95,13 +94,7 @@ async function runReviewRoutine(
 ): Promise<boolean> {
   const prNum = pullRequest.number;
   const headSHA = pullRequest.head.sha;
-  const ghorg = await mustGetGitHubOrg(owner);
-  if (enforceSubscriptionPlan && !ghorg.subscriptionID) {
-    logger.warn(
-      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
-    );
-    return false;
-  }
+  const ghorg = await mustGetGitHubOrgWithSubscription(owner);
   if (!ghorg.installationID) {
     // We fail loudly in this case because this is a bug in the system as it doesn't make sense that the installation
     // event wasn't handled by the time we start getting pull requests for an Org.
@@ -109,18 +102,15 @@ async function runReviewRoutine(
       `[${requestID}] No active installation on record for org ${owner} when handling pull request action for ${repoName} (Num: ${prNum}).`,
     );
   }
-
-  const octokit = octokitFromInstallation(ghorg.installationID);
-
-  let subscription: Subscription | null = null;
-  if (ghorg.subscriptionID) {
-    const maybeSubscription = await getSubscription(ghorg.subscriptionID);
-    if (maybeSubscription.value) {
-      subscription = maybeSubscription.value;
-    }
+  if (enforceSubscriptionPlan && !ghorg.subscription) {
+    logger.warn(
+      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
+    );
+    return false;
   }
 
-  const cfg = await loadConfigFromGitHub(octokit, subscription, ghorg);
+  const octokit = octokitFromInstallation(ghorg.installationID);
+  const cfg = await loadConfigFromGitHub(octokit, ghorg);
   if (!cfg) {
     logger.warn(
       `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,

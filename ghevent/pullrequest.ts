@@ -12,7 +12,7 @@ import type {
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
-import { mustGetGitHubOrg } from "../svcdata/mod.ts";
+import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
 
 import {
   completeCheck,
@@ -20,8 +20,8 @@ import {
   initializeCheck,
 } from "./checks.ts";
 
-const enforceMarketplacePlan = config.get(
-  "github.activeMarketplacePlanRequired",
+const enforceSubscriptionPlan = config.get(
+  "activeSubscriptionPlanRequired",
 );
 const permissionsWithWriteAccess = [
   "admin",
@@ -94,13 +94,7 @@ async function runReviewRoutine(
 ): Promise<boolean> {
   const prNum = pullRequest.number;
   const headSHA = pullRequest.head.sha;
-  const ghorg = await mustGetGitHubOrg(owner);
-  if (enforceMarketplacePlan && !ghorg.marketplacePlan) {
-    logger.warn(
-      `[${requestID}] Ignoring pull request action for org ${owner} - no active marketplace plan on record.`,
-    );
-    return false;
-  }
+  const ghorg = await mustGetGitHubOrgWithSubscription(owner);
   if (!ghorg.installationID) {
     // We fail loudly in this case because this is a bug in the system as it doesn't make sense that the installation
     // event wasn't handled by the time we start getting pull requests for an Org.
@@ -108,9 +102,14 @@ async function runReviewRoutine(
       `[${requestID}] No active installation on record for org ${owner} when handling pull request action for ${repoName} (Num: ${prNum}).`,
     );
   }
+  if (enforceSubscriptionPlan && !ghorg.subscription) {
+    logger.warn(
+      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
+    );
+    return false;
+  }
 
   const octokit = octokitFromInstallation(ghorg.installationID);
-
   const cfg = await loadConfigFromGitHub(octokit, ghorg);
   if (!cfg) {
     logger.warn(

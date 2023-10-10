@@ -15,18 +15,23 @@ export function logConfig(): void {
   logger.info("Configured settings for this environment:");
   logger.info(`configFileSizeLimit: ${config.get("configFileSizeLimit")}`);
   logger.info(`rulesFileSizeLimit: ${config.get("rulesFileSizeLimit")}`);
-  logger.info(`defaultOrgRepoLimit: ${config.get("defaultOrgRepoLimit")}`);
   if (lokiEnabled) {
     logger.info(`Shipping logs to Loki host: ${lokiHost}`);
   }
 
+  const repoLimits = config.get("planRepoLimits");
+  logger.info("planRepoLimits:");
+  for (const key in repoLimits) {
+    logger.info(`\t- ${key}: ${repoLimits[key]}`);
+  }
+
   logger.info(`GitHub App: ${config.get("github.app.appID")}`);
 
-  const activeMarketplacePlanRequired = config.get(
-    "github.activeMarketplacePlanRequired",
+  const activeSubscriptionPlanRequired = config.get(
+    "activeSubscriptionPlanRequired",
   );
-  if (activeMarketplacePlanRequired) {
-    logger.info("Users must have an active GitHub Marketplace plan");
+  if (activeSubscriptionPlanRequired) {
+    logger.info("Users must have an active Subscription plan");
   }
 
   const allowedOrgs = config.get("github.allowedOrgs");

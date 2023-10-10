@@ -12,17 +12,40 @@ export interface Lock {
 }
 
 /**
+ * Represents a Fensak Subscription. Each subscription can be associated with multiple Orgs.
+ * @property id The unique ID to identify the subscription. Typically a UUID.
+ * @property mainOrgName The main organization that manages the subscription. Owners of this Org can manage the
+ *                       subscription.
+ * @property planName The name of the subscription plan.
+ * @property repoCount A convenient counter of the number of active repos on the subscription. This is a sum across all
+ *                     associated orgs.
+ */
+export interface Subscription {
+  id: string;
+  mainOrgName: string;
+  planName: string;
+  repoCount: number;
+}
+
+/**
  * Represents a GitHub organization that has installed Fensak.
  * @property name The name (in slug form) of the GitHub organization.
  * @property installationID The installation ID of the GitHub app. Used for authentication.
- * @property repoLimit The maximum number of repositories that can be configured with Fensak.
- * @property markerplacePlan The specific plan that was purchased for the org on the GitHub marketplace.
+ * @property subscriptionID The associated subscription plan for the Org.
  */
 export interface GitHubOrg {
   name: string;
   installationID: number | null;
-  repoLimit: number;
-  marketplacePlan: string | null;
+  subscriptionID: string | null;
+}
+
+/**
+ * Represents a GitHubOrg with the Subscription info materialized.
+ */
+export interface GitHubOrgWithSubscription {
+  name: string;
+  installationID: number | null;
+  subscription: Subscription | null;
 }
 
 /**

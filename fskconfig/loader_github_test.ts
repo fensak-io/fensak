@@ -10,24 +10,33 @@ import {
 import { reng } from "../deps.ts";
 
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
-import type { GitHubOrg } from "../svcdata/mod.ts";
+import type {
+  GitHubOrgWithSubscription,
+  Subscription,
+} from "../svcdata/mod.ts";
 
-import {
-  fetchAndParseConfigFromDotFensak,
-  loadConfigFromGitHub,
-} from "./loader_github.ts";
+import { fetchAndParseConfigFromDotFensak } from "./loader_github.ts";
 
 const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
-Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
-  const testOrg: GitHubOrg = {
+Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async () => {
+  const sub: Subscription = {
+    id: "sub_asdf",
+    mainOrgName: "fensak-test",
+    planName: "pro",
+    repoCount: 0,
+  };
+  const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,
-    repoLimit: 100,
-    marketplacePlan: "pro",
+    subscription: sub,
   };
 
-  const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
+  const cfg = await fetchAndParseConfigFromDotFensak(
+    octokitRestTestClt,
+    testOrg,
+    expectedHeadSHA,
+  );
   assertExists(cfg);
   assertEquals(cfg.gitSHA, expectedHeadSHA);
   assertEquals(cfg.orgConfig, {
@@ -78,12 +87,16 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   // add some basic testing for the compiled rule source
 });
 
-Deno.test("loadConfigFromGitHub checks repo limits", async () => {
-  const testOrg: GitHubOrg = {
+Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
+  const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,
-    repoLimit: 1,
-    marketplacePlan: "pro",
+    subscription: {
+      id: "sub_asdf",
+      mainOrgName: "fensak-test",
+      planName: "pro",
+      repoCount: 5,
+    },
   };
 
   await assertRejects(

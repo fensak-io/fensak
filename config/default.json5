@@ -15,8 +15,29 @@
   // The maximum size of rules files that can be accepted (in bytes).
   rulesFileSizeLimit: 512000,
 
-  // Default setting for the Organization repo limit (max number of repos that can be configured with rules).
-  defaultOrgRepoLimit: 5,
+  // Whether an active subscription plan is required to maintain an active account. When disabled, all functionality
+  // will be made available if the user has the app installed, regardless of a corresponding Subscription plan.
+  activeSubscriptionPlanRequired: true,
+
+  // A key value pair of subscription plan names to their respective repo limits. An empty string key indicates the
+  // default repo limit for any plan that doesn't match other keys.
+  planRepoLimits: {
+    "": 5,
+  },
+
+  /**
+   * Settings related to the management API.
+   */
+  managementAPI: {
+    // Whether to enable the management API.
+    enabled: true,
+
+    // The secret key for signing webhook events.
+    eventSecretKey: "",
+
+    // Allowed CORS origins.
+    allowedCORSOrigins: [],
+  },
 
   /**
    * Settings/Secrets related to logging.
@@ -50,11 +71,6 @@
     // When null, all Orgs will be allowed.
     allowedOrgs: null,
 
-    // Whether an active GitHub Marketplace plan is required to maintain an active account. When disabled, all
-    // functionality will be made available if the user has the app installed, regardless of a corresponding Marketplace
-    // plan.
-    activeMarketplacePlanRequired: true,
-
     // The secret string used to authenticate GitHub webhook requests coming in.
     webhookSecret: "",
 
@@ -71,6 +87,14 @@
       // openssl pkcs8 -topk8 -inform PEM -outform PEM -in fensak-test.DATE.private-key.pem -out fensak-test.pem -nocrypt
       //
       privateKey: "",
+    },
+
+    // Authentication parameters for the Oauth App used by the frontend to log users in.
+    oauthApp: {
+      // The client ID of the Oauth App.
+      clientID: "",
+      // The client secret of the Oauth App.
+      clientSecret: "",
     },
 
     // An optional API token to use to authenticate GitHub API requests. Only used in dev and test mode (in production,

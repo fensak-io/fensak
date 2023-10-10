@@ -16,8 +16,12 @@ devserver: dependencies						## Start the dev environment server. This will be r
 		-f ./deployments/dev/app.docker-compose.yml \
 		up --build
 
-stopdevserver:							## Shut down the dev database and app server. This will keep the data volumes unless make cleandevdb is run.
+stopdevserver:							## Shut down the dev app server.
 	# Destroying dev server containers.
 	@docker compose -p fsk \
 		-f ./deployments/dev/app.docker-compose.yml \
 		down
+
+cleandevserver: stopdevserver						## Shut down the dev app server.
+	# Destroying dev server data.
+	@docker volume rm fsk_denocache || true

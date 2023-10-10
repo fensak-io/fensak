@@ -8,6 +8,7 @@ import {
   filterAllowedOrgsForUser,
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
+import { getSubscription } from "../svcdata/mod.ts";
 
 const corsOrigins = config.get("managementAPI.allowedCORSOrigins");
 
@@ -30,11 +31,46 @@ export function attachMgmtAPIRoutes(router: Router): void {
 }
 
 async function handleGetOrganizations(ctx: Context): Promise<void> {
+  interface APIOrganization {
+    slug: string;
+    subscription: APISubscription | null;
+    is_main_org: boolean;
+  }
+  interface APISubscription {
+    id: string;
+    main_org_name: string;
+  }
+
   const authedUser = ctx.state.apiAuthedUser;
   const slugs = ctx.request.url.searchParams.getAll("slugs");
+  const allowedOrgs = await filterAllowedOrgsForUser(authedUser, slugs);
+
+  // Marshal the allowed orgs list for the API. This primarily handles pulling in the subscription object.
+  const outData: APIOrganization[] = [];
+  for (const o of allowedOrgs) {
+    let subscription: APISubscription | null = null;
+    let isMainOrg = false;
+    if (o.subscription_id) {
+      const maybeSubscription = await getSubscription(o.subscription_id);
+      if (maybeSubscription.value) {
+        subscription = {
+          id: maybeSubscription.value.id,
+          main_org_name: maybeSubscription.value.mainOrgName,
+        };
+        if (subscription.main_org_name == o.slug) {
+          isMainOrg = true;
+        }
+      }
+    }
+    outData.push({
+      slug: o.slug,
+      subscription: subscription,
+      is_main_org: isMainOrg,
+    });
+  }
 
   const out = {
-    data: await filterAllowedOrgsForUser(authedUser, slugs),
+    data: outData,
   };
 
   ctx.response.status = Status.OK;

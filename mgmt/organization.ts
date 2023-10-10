@@ -29,7 +29,7 @@ export async function filterAllowedOrgsForUser(
 
       return {
         slug: od.value.name,
-        subscription_id: od.value.name,
+        subscription_id: od.value.subscriptionID,
       };
     }),
   );

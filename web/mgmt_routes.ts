@@ -1,7 +1,7 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config, Context, oakCors, Router, Status } from "../deps.ts";
+import { config, Context, oakCors, Octokit, Router, Status } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
 import {
@@ -33,6 +33,7 @@ export function attachMgmtAPIRoutes(router: Router): void {
 async function handleGetOrganizations(ctx: Context): Promise<void> {
   interface APIOrganization {
     slug: string;
+    app_is_installed: boolean;
     subscription: APISubscription | null;
     is_main_org: boolean;
   }
@@ -41,9 +42,15 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
     main_org_name: string;
   }
 
+  const token = ctx.state.apiToken;
+  const octokit = new Octokit({ auth: token });
   const authedUser = ctx.state.apiAuthedUser;
   const slugs = ctx.request.url.searchParams.getAll("slugs");
-  const allowedOrgs = await filterAllowedOrgsForUser(authedUser, slugs);
+  const allowedOrgs = await filterAllowedOrgsForUser(
+    octokit,
+    authedUser,
+    slugs,
+  );
 
   // Marshal the allowed orgs list for the API. This primarily handles pulling in the subscription object.
   const outData: APIOrganization[] = [];
@@ -64,6 +71,7 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
     }
     outData.push({
       slug: o.slug,
+      app_is_installed: o.app_is_installed,
       subscription: subscription,
       is_main_org: isMainOrg,
     });

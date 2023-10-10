@@ -72,6 +72,7 @@ export const assertAPIToken: Middleware = async (
   }
 
   ctx.state.apiAuthedUser = resp.data.user.login;
+  ctx.state.apiToken = token;
   ctx.state.apiTokenSource = APITokenSource.GitHub;
 
   await next();

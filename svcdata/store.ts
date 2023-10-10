@@ -207,14 +207,49 @@ export async function storeGitHubOrg(
  * Deletes the record of the github organization in the KV store. This also deletes any cached config data from our
  * internal records.
  */
-export async function deleteGitHubOrg(orgName: string): Promise<void> {
-  const ok = await mainKV.atomic()
+export async function deleteGitHubOrg(
+  orgName: string,
+  existingOrgRecord?: Deno.KvEntryMaybe<GitHubOrg>,
+): Promise<void> {
+  let staged = mainKV.atomic();
+  if (existingOrgRecord) {
+    staged = staged.check(existingOrgRecord);
+  }
+
+  const ok = await staged
     .delete([TableNames.GitHubOrg, orgName])
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, orgName])
     .commit();
   if (!ok) {
     throw new Error(
       `Could not delete org ${orgName} and associated config from system.`,
+    );
+  }
+}
+
+/**
+ * Removes the installationID record on the GitHub Org and also deletes all associated config data.
+ */
+export async function removeInstallationForGitHubOrg(
+  existingOrgRecord: Deno.KvEntryMaybe<GitHubOrg>,
+): Promise<void> {
+  if (!existingOrgRecord.value) {
+    throw new Error(
+      "removeInstallationForGitHubOrg only works on records with an org value",
+    );
+  }
+
+  const org = { ...existingOrgRecord.value };
+  org.installationID = null;
+
+  const ok = await mainKV.atomic()
+    .check(existingOrgRecord)
+    .set([TableNames.GitHubOrg, org.name], org)
+    .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, org.name])
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not remove installation for org ${org.name}`,
     );
   }
 }

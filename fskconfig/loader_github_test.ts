@@ -9,8 +9,18 @@ import {
 } from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
+import { getRandomString } from "../xtd/mod.ts";
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
-import type { GitHubOrg } from "../svcdata/mod.ts";
+import type {
+  GitHubOrgWithSubscription,
+  Subscription,
+} from "../svcdata/mod.ts";
+import {
+  FensakConfigSource,
+  getComputedFensakConfig,
+  getSubscription,
+  storeSubscription,
+} from "../svcdata/mod.ts";
 
 import {
   fetchAndParseConfigFromDotFensak,
@@ -20,14 +30,27 @@ import {
 const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
 Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
-  const testOrg: GitHubOrg = {
+  // We must first load a real subscription object to Deno KV since storing the Fensak config will depend on it.
+  const randomSubID = `sub_${getRandomString(6)}`;
+  const sub: Subscription = {
+    id: randomSubID,
+    mainOrgName: "fensak-test",
+    planName: "pro",
+    repoCount: 0,
+  };
+  const ok = await storeSubscription(sub);
+  assert(ok);
+
+  const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,
-    repoLimit: 100,
-    marketplacePlan: "pro",
+    subscription: sub,
   };
 
-  const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
+  const cfg = await loadConfigFromGitHub(
+    octokitRestTestClt,
+    testOrg,
+  );
   assertExists(cfg);
   assertEquals(cfg.gitSHA, expectedHeadSHA);
   assertEquals(cfg.orgConfig, {
@@ -74,16 +97,31 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
     );
   }
 
+  // Test that the compiled config was successfully saved in the DB.
+  //
   // TODO
   // add some basic testing for the compiled rule source
+  const refreshedCfg = await getComputedFensakConfig(
+    FensakConfigSource.GitHub,
+    "fensak-test",
+  );
+  assertExists(refreshedCfg);
+
+  // Test that the repo count was incremented on the subscription object.
+  const refreshedSub = await getSubscription(sub.id);
+  assertEquals(refreshedSub.value?.repoCount, 3);
 });
 
-Deno.test("loadConfigFromGitHub checks repo limits", async () => {
-  const testOrg: GitHubOrg = {
+Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
+  const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,
-    repoLimit: 1,
-    marketplacePlan: "pro",
+    subscription: {
+      id: "sub_asdf",
+      mainOrgName: "fensak-test",
+      planName: "pro",
+      repoCount: 5,
+    },
   };
 
   await assertRejects(

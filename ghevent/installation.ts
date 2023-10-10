@@ -8,11 +8,12 @@ import { logger } from "../logging/mod.ts";
 import {
   deleteGitHubOrg,
   getGitHubOrgRecord,
+  getSubscription,
   GitHubOrg,
+  removeInstallationForGitHubOrg,
   storeGitHubOrg,
 } from "../svcdata/mod.ts";
 
-const defaultOrgRepoLimit = config.get("defaultOrgRepoLimit");
 const allowedOrgs: string[] | null = config.get("github.allowedOrgs");
 
 /**
@@ -63,26 +64,25 @@ async function orgInstalledApp(
   requestID: string,
   payload: GitHubInstallationEvent,
 ): Promise<boolean> {
-  const owner = payload.installation.account.login;
+  const orgName = payload.installation.account.login;
   if (
-    allowedOrgs != null && !allowedOrgs.includes(owner)
+    allowedOrgs != null && !allowedOrgs.includes(orgName)
   ) {
     logger.warn(
-      `[${requestID}] ${owner} purchased the Fensak App on the marketplace, but is not an allowed Org on this instance of Fensak.`,
+      `[${requestID}] ${orgName} purchased the Fensak App on the marketplace, but is not an allowed Org on this instance of Fensak.`,
     );
     return false;
   }
 
   const newOrg: GitHubOrg = {
-    name: owner,
+    name: orgName,
     installationID: payload.installation.id,
-    repoLimit: defaultOrgRepoLimit,
-    marketplacePlan: null,
+    subscriptionID: null,
   };
 
-  const maybeOrg = await getGitHubOrgRecord(owner);
+  const maybeOrg = await getGitHubOrgRecord(orgName);
   if (maybeOrg.value) {
-    newOrg.marketplacePlan = maybeOrg.value.marketplacePlan;
+    newOrg.subscriptionID = maybeOrg.value.subscriptionID;
   }
 
   const ok = await storeGitHubOrg(newOrg, maybeOrg);
@@ -96,5 +96,28 @@ async function orgInstalledApp(
 }
 
 async function orgRemovedApp(payload: GitHubInstallationEvent): Promise<void> {
-  await deleteGitHubOrg(payload.installation.account.login);
+  const orgName = payload.installation.account.login;
+  const maybeOrg = await getGitHubOrgRecord(orgName);
+  if (!maybeOrg.value) {
+    return;
+  }
+
+  if (!maybeOrg.value.subscriptionID) {
+    // No subscription associated, so safe to delete.
+    await deleteGitHubOrg(orgName, maybeOrg);
+    return;
+  }
+
+  const maybeSubscription = await getSubscription(
+    maybeOrg.value.subscriptionID,
+  );
+  if (!maybeSubscription.value) {
+    // Had a subscription associated, but is no longer active so safe to delete.
+    await deleteGitHubOrg(orgName, maybeOrg);
+    return;
+  }
+
+  // At this point, this org has an active subscription associated with it, so we can't delete it.
+  // Instead, we need to remove the installationID and the associated config data.
+  await removeInstallationForGitHubOrg(maybeOrg);
 }

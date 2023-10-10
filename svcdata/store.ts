@@ -7,10 +7,17 @@ import { logger } from "../logging/mod.ts";
 import { sleep } from "../xtd/mod.ts";
 
 import { mainKV } from "./svc.ts";
-import { ComputedFensakConfig, GitHubOrg, Lock } from "./models.ts";
+import {
+  ComputedFensakConfig,
+  GitHubOrg,
+  GitHubOrgWithSubscription,
+  Lock,
+  Subscription,
+} from "./models.ts";
 
 enum TableNames {
   HealthCheck = "healthcheck",
+  Subscription = "subscription",
   GitHubOrg = "github_org",
   FensakConfig = "fensak_config",
   Lock = "lock",
@@ -116,6 +123,64 @@ export async function releaseLock(lock: Lock): Promise<void> {
 }
 
 /**
+ * Stores the subscription into the KV store. This will also create or update the record for the GitHub Organization.
+ * @returns Whether the record was successfully stored.
+ */
+export async function storeSubscription(
+  subscription: Subscription,
+  existingSubRecord?: Deno.KvEntryMaybe<Subscription>,
+): Promise<boolean> {
+  const key = [TableNames.Subscription, subscription.id];
+
+  let staged;
+  if (existingSubRecord) {
+    staged = mainKV.atomic()
+      .check(existingSubRecord)
+      .set(key, subscription);
+  } else {
+    staged = mainKV.atomic().set(key, subscription);
+  }
+
+  const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
+  const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
+  staged = staged.check(existingOrg);
+  if (existingOrg.value) {
+    const org = { ...existingOrg.value };
+    org.subscriptionID = subscription.id;
+    staged = staged.set(orgKey, org);
+  } else {
+    staged = staged.set(orgKey, {
+      name: subscription.mainOrgName,
+      installationID: null,
+      subscriptionID: subscription.id,
+    });
+  }
+
+  const { ok } = await staged.commit();
+  return ok;
+}
+
+/**
+ * Gets the subscription by the given ID.
+ * @returns The subscription object for the ID.
+ */
+export async function getSubscription(
+  id: string,
+): Promise<Deno.KvEntryMaybe<Subscription>> {
+  return await mainKV.get<Subscription>([TableNames.Subscription, id]);
+}
+
+/**
+ * Deletes the given subscription from the KV store.
+ *
+ * TODO
+ * Disassociate subscription from all the associated GitHub orgs.
+ */
+export async function deleteSubscription(id: string): Promise<void> {
+  await mainKV.delete([TableNames.Subscription, id]);
+}
+
+/**
  * Stores the github organization into the KV store so that we can lookup the installation ID to authenticate as the
  * Org. If existingOrgRecord is provided, this will do an atomic check to make sure the state hasn't changed.
  * @returns Whether the record was successfully stored.
@@ -142,14 +207,49 @@ export async function storeGitHubOrg(
  * Deletes the record of the github organization in the KV store. This also deletes any cached config data from our
  * internal records.
  */
-export async function deleteGitHubOrg(orgName: string): Promise<void> {
-  const ok = await mainKV.atomic()
+export async function deleteGitHubOrg(
+  orgName: string,
+  existingOrgRecord?: Deno.KvEntryMaybe<GitHubOrg>,
+): Promise<void> {
+  let staged = mainKV.atomic();
+  if (existingOrgRecord) {
+    staged = staged.check(existingOrgRecord);
+  }
+
+  const ok = await staged
     .delete([TableNames.GitHubOrg, orgName])
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, orgName])
     .commit();
   if (!ok) {
     throw new Error(
       `Could not delete org ${orgName} and associated config from system.`,
+    );
+  }
+}
+
+/**
+ * Removes the installationID record on the GitHub Org and also deletes all associated config data.
+ */
+export async function removeInstallationForGitHubOrg(
+  existingOrgRecord: Deno.KvEntryMaybe<GitHubOrg>,
+): Promise<void> {
+  if (!existingOrgRecord.value) {
+    throw new Error(
+      "removeInstallationForGitHubOrg only works on records with an org value",
+    );
+  }
+
+  const org = { ...existingOrgRecord.value };
+  org.installationID = null;
+
+  const ok = await mainKV.atomic()
+    .check(existingOrgRecord)
+    .set([TableNames.GitHubOrg, org.name], org)
+    .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, org.name])
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not remove installation for org ${org.name}`,
     );
   }
 }
@@ -177,14 +277,80 @@ export async function mustGetGitHubOrg(orgName: string): Promise<GitHubOrg> {
 }
 
 /**
- * Stores the computed fensak configuration for the given org.
+ * Retrieves the github organization with the subscription data from the KV store. This will throw an error if there is
+ * no record of the corresponding organization.
+ *
+ * Note that this will also update the github org if it has a subscriptionID associated with it and the subscription
+ * doesn't exist.
+ */
+export async function mustGetGitHubOrgWithSubscription(
+  orgName: string,
+): Promise<GitHubOrgWithSubscription> {
+  const entry = await mainKV.get<GitHubOrg>([TableNames.GitHubOrg, orgName]);
+  if (!entry.value) {
+    throw new Error(`no installation found for GitHub Org ${orgName}`);
+  }
+
+  const out: GitHubOrgWithSubscription = {
+    name: entry.value.name,
+    installationID: entry.value.installationID,
+    subscription: null,
+  };
+  if (entry.value.subscriptionID) {
+    const sub = await getSubscription(entry.value.subscriptionID);
+    if (!sub.value) {
+      // Subscription doesn't exist, so update GitHub Org to remove that link.
+      const ghorg = { ...entry.value };
+      ghorg.subscriptionID = null;
+      const ok = await storeGitHubOrg(ghorg, entry);
+      if (!ok) {
+        throw new Error(
+          `could not update outdated subscription info for GitHub Org ${orgName}`,
+        );
+      }
+    } else {
+      out.subscription = sub.value;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Stores the computed fensak configuration for the given org. If a subscriptionID is passed in, then this will
+ * atomically increment the repo count on the associated subscription object.
  */
 export async function storeComputedFensakConfig(
   cfgSrc: FensakConfigSource,
   orgName: string,
   cfg: ComputedFensakConfig,
+  subscriptionID?: string,
 ): Promise<void> {
-  await mainKV.set([TableNames.FensakConfig, cfgSrc, orgName], cfg);
+  const cfgKey = [TableNames.FensakConfig, cfgSrc, orgName];
+  if (!subscriptionID) {
+    await mainKV.set(cfgKey, cfg);
+    return;
+  }
+
+  const existingSub = await getSubscription(subscriptionID);
+  if (!existingSub.value) {
+    // Fail loudly since this is a bug condition.
+    throw new Error(
+      "storeComputedFensakConfig expects an existing subscription object when subscriptionID is set",
+    );
+  }
+  const sub = { ...existingSub.value };
+  sub.repoCount += Object.keys(cfg.orgConfig.repos).length;
+  const { ok } = await mainKV.atomic()
+    .check(existingSub)
+    .set(existingSub.key, sub)
+    .set(cfgKey, cfg)
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not store fensak config and update subscription repo count for org ${orgName}`,
+    );
+  }
 }
 
 /**

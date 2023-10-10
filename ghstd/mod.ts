@@ -6,3 +6,4 @@
  * Contains common utility functions for interacting with GitHub.
  */
 export * from "./repo.ts";
+export * from "./org.ts";

@@ -22,11 +22,11 @@ export function logConfig(): void {
 
   logger.info(`GitHub App: ${config.get("github.app.appID")}`);
 
-  const activeMarketplacePlanRequired = config.get(
-    "github.activeMarketplacePlanRequired",
+  const activeSubscriptionPlanRequired = config.get(
+    "activeSubscriptionPlanRequired",
   );
-  if (activeMarketplacePlanRequired) {
-    logger.info("Users must have an active GitHub Marketplace plan");
+  if (activeSubscriptionPlanRequired) {
+    logger.info("Users must have an active Subscription plan");
   }
 
   const allowedOrgs = config.get("github.allowedOrgs");

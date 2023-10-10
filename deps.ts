@@ -5,6 +5,7 @@ export {
   crypto,
   toHashString,
 } from "https://deno.land/std@0.202.0/crypto/mod.ts";
+export { timingSafeEqual } from "https://deno.land/std@0.202.0/crypto/timing_safe_equal.ts";
 export * as hex from "https://deno.land/std@0.202.0/encoding/hex.ts";
 export * as base64 from "https://deno.land/std@0.202.0/encoding/base64.ts";
 export * as path from "https://deno.land/std@0.202.0/path/mod.ts";
@@ -18,6 +19,7 @@ export {
   Status,
 } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export type { Middleware, Next } from "https://deno.land/x/oak@v12.6.1/mod.ts";
+export { oakCors } from "https://deno.land/x/cors@v1.2.1/mod.ts";
 
 import winston from "npm:winston@^3.10.0";
 import WinstonTransport from "npm:winston-transport@^4.5.0";
@@ -29,7 +31,6 @@ export type { components as GitHubComponents } from "npm:@octokit/openapi-types@
 export { Webhooks as GitHubWebhooks } from "npm:@octokit/webhooks@^12.0.3";
 export type {
   InstallationEvent as GitHubInstallationEvent,
-  MarketplacePurchaseEvent as GitHubMarketplacePurchaseEvent,
   PullRequest as GitHubPullRequest,
   PullRequestEvent as GitHubPullRequestEvent,
   PullRequestReviewEvent as GitHubPullRequestReviewEvent,
@@ -51,6 +52,8 @@ export {
 };
 // Must use esm.sh version for auth-app. See https://github.com/octokit/auth-app.js/issues/465
 export { createAppAuth as octokitCreateAppAuth } from "https://esm.sh/@octokit/auth-app@6.0.1";
+// Must use esm.sh version for auth-oauth-app. See https://github.com/octokit/auth-app.js/issues/465
+export { createOAuthAppAuth as octokitCreateOAuthAppAuth } from "https://esm.sh/@octokit/auth-oauth-app@7.0.1";
 
 // See https://github.com/ajv-validator/ajv/issues/2132
 import _Ajv from "npm:ajv@^8.12.0";

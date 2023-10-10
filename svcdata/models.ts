@@ -19,12 +19,15 @@ export interface Lock {
  * @property planName The name of the subscription plan.
  * @property repoCount A convenient counter of the number of active repos on the subscription. This is a sum across all
  *                     associated orgs.
+ * @property cancelledAt The timestamp (in milliseconds after epoch in UTC) when the subscription will be cancelled.
+ *                       Used to record a future cancellation event for subscription management.
  */
 export interface Subscription {
   id: string;
   mainOrgName: string;
   planName: string;
   repoCount: number;
+  cancelledAt: number;
 }
 
 /**

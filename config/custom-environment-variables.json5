@@ -12,13 +12,13 @@
     __name: "FENSAK_RULES_FILE_SIZE_LIMIT",
     __format: "number",
   },
-  defaultOrgRepoLimit: {
-    __name: "FENSAK_DEFAULT_ORG_REPO_LIMIT",
-    __format: "number",
-  },
   activeMarketplacePlanRequired: {
     __name: "FENSAK_ACTIVE_SUBSCRIPTION_PLAN_REQUIRED",
     __format: "boolean",
+  },
+  planRepoLimits: {
+    __name: "FENSAK_PLAN_REPO_LIMITS",
+    __format: "json",
   },
   managementAPI: {
     enabled: {

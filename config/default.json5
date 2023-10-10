@@ -15,12 +15,15 @@
   // The maximum size of rules files that can be accepted (in bytes).
   rulesFileSizeLimit: 512000,
 
-  // Default setting for the Organization repo limit (max number of repos that can be configured with rules).
-  defaultOrgRepoLimit: 5,
-
   // Whether an active subscription plan is required to maintain an active account. When disabled, all functionality
   // will be made available if the user has the app installed, regardless of a corresponding Subscription plan.
   activeSubscriptionPlanRequired: true,
+
+  // A key value pair of subscription plan names to their respective repo limits. An empty string key indicates the
+  // default repo limit for any plan that doesn't match other keys.
+  planRepoLimits: {
+    "": 5,
+  },
 
   /**
    * Settings related to the management API.

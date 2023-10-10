@@ -12,7 +12,8 @@ import type {
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
-import { mustGetGitHubOrg } from "../svcdata/mod.ts";
+import type { Subscription } from "../svcdata/mod.ts";
+import { getSubscription, mustGetGitHubOrg } from "../svcdata/mod.ts";
 
 import {
   completeCheck,
@@ -111,7 +112,15 @@ async function runReviewRoutine(
 
   const octokit = octokitFromInstallation(ghorg.installationID);
 
-  const cfg = await loadConfigFromGitHub(octokit, ghorg);
+  let subscription: Subscription | null = null;
+  if (ghorg.subscriptionID) {
+    const maybeSubscription = await getSubscription(ghorg.subscriptionID);
+    if (maybeSubscription.value) {
+      subscription = maybeSubscription.value;
+    }
+  }
+
+  const cfg = await loadConfigFromGitHub(octokit, subscription, ghorg);
   if (!cfg) {
     logger.warn(
       `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,

@@ -1,13 +1,21 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { assert, assertEquals, assertExists } from "../test_deps.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertRejects,
+} from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
-import type { GitHubOrg } from "../svcdata/mod.ts";
+import type { GitHubOrg, Subscription } from "../svcdata/mod.ts";
 
-import { loadConfigFromGitHub } from "./loader_github.ts";
+import {
+  fetchAndParseConfigFromDotFensak,
+  loadConfigFromGitHub,
+} from "./loader_github.ts";
 
 const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
@@ -15,10 +23,20 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   const testOrg: GitHubOrg = {
     name: "fensak-test",
     installationID: 0,
-    subscriptionID: "pro",
+    subscriptionID: "sub_asdf",
+  };
+  const testSubscription: Subscription = {
+    id: "sub_asdf",
+    mainOrgName: "fensak-test",
+    planName: "pro",
+    repoCount: 0,
   };
 
-  const cfg = await loadConfigFromGitHub(octokitRestTestClt, testOrg);
+  const cfg = await loadConfigFromGitHub(
+    octokitRestTestClt,
+    testSubscription,
+    testOrg,
+  );
   assertExists(cfg);
   assertEquals(cfg.gitSHA, expectedHeadSHA);
   assertEquals(cfg.orgConfig, {
@@ -67,4 +85,30 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
 
   // TODO
   // add some basic testing for the compiled rule source
+});
+
+Deno.test("loadConfigFromGitHub checks repo limits", async () => {
+  const testOrg: GitHubOrg = {
+    name: "fensak-test",
+    installationID: 0,
+    subscriptionID: "sub_asdf",
+  };
+  const testSubscription: Subscription = {
+    id: "sub_asdf",
+    mainOrgName: "fensak-test",
+    planName: "pro",
+    repoCount: 5,
+  };
+
+  await assertRejects(
+    () =>
+      fetchAndParseConfigFromDotFensak(
+        octokitRestTestClt,
+        testSubscription,
+        testOrg,
+        expectedHeadSHA,
+      ),
+    Error,
+    "exceeds the repo limit for the org",
+  );
 });

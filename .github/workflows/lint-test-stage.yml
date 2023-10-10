@@ -38,7 +38,7 @@ jobs:
       - name: test
         run: |
           deno test \
-            --unstable --allow-net --allow-env --allow-read \
+            --parallel --unstable --allow-net --allow-env --allow-read \
             --ignore=deployments/release \
             --reporter=junit --junit-path=./report.xml
         env:

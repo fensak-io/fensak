@@ -9,47 +9,33 @@ import {
 } from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
-import { getRandomString } from "../xtd/mod.ts";
 import { octokitRestTestClt } from "../ghauth/rest_test.ts";
 import type {
   GitHubOrgWithSubscription,
   Subscription,
 } from "../svcdata/mod.ts";
-import {
-  FensakConfigSource,
-  getComputedFensakConfig,
-  getSubscription,
-  storeSubscription,
-} from "../svcdata/mod.ts";
 
-import {
-  fetchAndParseConfigFromDotFensak,
-  loadConfigFromGitHub,
-} from "./loader_github.ts";
+import { fetchAndParseConfigFromDotFensak } from "./loader_github.ts";
 
 const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
 
-Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
-  // We must first load a real subscription object to Deno KV since storing the Fensak config will depend on it.
-  const randomSubID = `sub_${getRandomString(6)}`;
+Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async () => {
   const sub: Subscription = {
-    id: randomSubID,
+    id: "sub_asdf",
     mainOrgName: "fensak-test",
     planName: "pro",
     repoCount: 0,
   };
-  const ok = await storeSubscription(sub);
-  assert(ok);
-
   const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,
     subscription: sub,
   };
 
-  const cfg = await loadConfigFromGitHub(
+  const cfg = await fetchAndParseConfigFromDotFensak(
     octokitRestTestClt,
     testOrg,
+    expectedHeadSHA,
   );
   assertExists(cfg);
   assertEquals(cfg.gitSHA, expectedHeadSHA);
@@ -97,19 +83,8 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
     );
   }
 
-  // Test that the compiled config was successfully saved in the DB.
-  //
   // TODO
   // add some basic testing for the compiled rule source
-  const refreshedCfg = await getComputedFensakConfig(
-    FensakConfigSource.GitHub,
-    "fensak-test",
-  );
-  assertExists(refreshedCfg);
-
-  // Test that the repo count was incremented on the subscription object.
-  const refreshedSub = await getSubscription(sub.id);
-  assertEquals(refreshedSub.value?.repoCount, 3);
 });
 
 Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {

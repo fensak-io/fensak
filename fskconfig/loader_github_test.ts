@@ -112,7 +112,7 @@ Deno.test("loadConfigFromGitHub for fensak-test example repo", async () => {
   assertEquals(refreshedSub.value?.repoCount, 3);
 });
 
-Deno.test("loadConfigFromGitHub checks repo limits", async () => {
+Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
   const testOrg: GitHubOrgWithSubscription = {
     name: "fensak-test",
     installationID: 0,

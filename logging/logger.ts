@@ -25,6 +25,16 @@ export function logConfig(): void {
     logger.info(`\t- ${key}: ${repoLimits[key]}`);
   }
 
+  const plansAllowedMultipleOrgs = config.get("plansAllowedMultipleOrgs");
+  if (plansAllowedMultipleOrgs.length > 0) {
+    logger.info("plansAllowedMultipleOrgs:");
+    for (const plan of plansAllowedMultipleOrgs) {
+      logger.info(`\t- ${plan}`);
+    }
+  } else {
+    logger.info("No plans allowed multiple orgs");
+  }
+
   logger.info(`GitHub App: ${config.get("github.app.appID")}`);
 
   const activeSubscriptionPlanRequired = config.get(

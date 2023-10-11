@@ -20,6 +20,10 @@
     __name: "FENSAK_PLAN_REPO_LIMITS",
     __format: "json",
   },
+  plansAllowedMultipleOrgs: {
+    __name: "FENSAK_PLANS_ALLOWED_MULTIPLE_ORGS",
+    __format: "json",
+  },
   managementAPI: {
     enabled: {
       __name: "FENSAK_MANAGEMENT_API_ENABLED",

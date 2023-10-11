@@ -25,6 +25,7 @@ interface APIOrganization {
 interface APISubscription {
   id: string;
   main_org_name: string;
+  plan_name: string;
   cancelled_at: number;
 }
 
@@ -75,6 +76,7 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
         subscription = {
           id: maybeSubscription.value.id,
           main_org_name: maybeSubscription.value.mainOrgName,
+          plan_name: maybeSubscription.value.planName,
           cancelled_at: maybeSubscription.value.cancelledAt,
         };
         if (subscription.main_org_name == o.slug) {
@@ -120,6 +122,7 @@ async function handleGetOneOrganization(
     apis = {
       id: ghorg.subscription.id,
       main_org_name: ghorg.subscription.mainOrgName,
+      plan_name: ghorg.subscription.planName,
       cancelled_at: ghorg.subscription.cancelledAt,
     };
     isMainOrg = ghorg.name == ghorg.subscription.mainOrgName;

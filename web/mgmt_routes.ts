@@ -2,13 +2,32 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
 import { config, Context, oakCors, Octokit, Router, Status } from "../deps.ts";
+import type { RouteParams, RouterContext } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
 import {
   filterAllowedGitHubOrgsForAuthenticatedUser,
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
-import { getSubscription } from "../svcdata/mod.ts";
+import {
+  getSubscription,
+  mustGetGitHubOrgWithSubscription,
+} from "../svcdata/mod.ts";
+import type { GitHubOrgWithSubscription } from "../svcdata/mod.ts";
+import { isOrgManager } from "../ghstd/mod.ts";
+
+interface APIOrganization {
+  slug: string;
+  app_is_installed: boolean;
+  subscription: APISubscription | null;
+  is_main_org: boolean;
+}
+interface APISubscription {
+  id: string;
+  main_org_name: string;
+  plan_name: string;
+  cancelled_at: number;
+}
 
 const corsOrigins = config.get("managementAPI.allowedCORSOrigins");
 
@@ -27,21 +46,17 @@ export function attachMgmtAPIRoutes(router: Router): void {
       corsMW,
       middlewares.assertMgmtAPIToken,
       handleGetOrganizations,
+    )
+    .options("/api/v1/organizations/:orgid", corsMW)
+    .get(
+      "/api/v1/organizations/:orgid",
+      corsMW,
+      middlewares.assertMgmtAPIToken,
+      handleGetOneOrganization,
     );
 }
 
 async function handleGetOrganizations(ctx: Context): Promise<void> {
-  interface APIOrganization {
-    slug: string;
-    app_is_installed: boolean;
-    subscription: APISubscription | null;
-    is_main_org: boolean;
-  }
-  interface APISubscription {
-    id: string;
-    main_org_name: string;
-  }
-
   const token = ctx.state.apiToken;
   const octokit = new Octokit({ auth: token });
   const slugs = ctx.request.url.searchParams.getAll("slugs");
@@ -61,6 +76,8 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
         subscription = {
           id: maybeSubscription.value.id,
           main_org_name: maybeSubscription.value.mainOrgName,
+          plan_name: maybeSubscription.value.planName,
+          cancelled_at: maybeSubscription.value.cancelledAt,
         };
         if (subscription.main_org_name == o.slug) {
           isMainOrg = true;
@@ -75,12 +92,49 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
     });
   }
 
-  const out = {
-    data: outData,
-  };
-
   ctx.response.status = Status.OK;
-  ctx.response.body = out;
+  ctx.response.body = { data: outData };
+}
+
+async function handleGetOneOrganization(
+  // deno-lint-ignore no-explicit-any
+  ctx: RouterContext<string, RouteParams<string>, any>,
+): Promise<void> {
+  let ghorg: GitHubOrgWithSubscription;
+  try {
+    ghorg = await mustGetGitHubOrgWithSubscription(ctx.params.orgid);
+  } catch (_e) {
+    ctx.response.status = Status.NotFound;
+    return;
+  }
+
+  const token = ctx.state.apiToken;
+  const octokit = new Octokit({ auth: token });
+  const isAllowed = await isOrgManager(octokit, ghorg.name);
+  if (!isAllowed) {
+    ctx.response.status = Status.NotFound;
+    return;
+  }
+
+  let apis: APISubscription | null = null;
+  let isMainOrg = false;
+  if (ghorg.subscription) {
+    apis = {
+      id: ghorg.subscription.id,
+      main_org_name: ghorg.subscription.mainOrgName,
+      plan_name: ghorg.subscription.planName,
+      cancelled_at: ghorg.subscription.cancelledAt,
+    };
+    isMainOrg = ghorg.name == ghorg.subscription.mainOrgName;
+  }
+  const apio: APIOrganization = {
+    slug: ghorg.name,
+    app_is_installed: ghorg.installationID != null,
+    subscription: apis,
+    is_main_org: isMainOrg,
+  };
+  ctx.response.status = Status.OK;
+  ctx.response.body = { data: apio };
 }
 
 async function handleMgmtEvent(ctx: Context): Promise<void> {

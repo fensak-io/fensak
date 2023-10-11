@@ -25,6 +25,9 @@
     "": 5,
   },
 
+  // A list of subscription plan names that are allowed to link multiple Orgs.
+  plansAllowedMultipleOrgs: [],
+
   /**
    * Settings related to the management API.
    */

@@ -9,16 +9,18 @@ import type {
   GitHubUser,
 } from "../deps.ts";
 
+import { fensakCfgRepoName } from "../constants/mod.ts";
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
+import {
+  completeSmartReviewCheck,
+  formatSmartReviewCheckOutputText,
+  getDefaultHeadSHA,
+  initializeSmartReviewCheck,
+  reportNoSubscriptionToUser,
+} from "../ghstd/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
-
-import {
-  completeCheck,
-  formatCheckOutputText,
-  initializeCheck,
-} from "./checks.ts";
 
 const enforceSubscriptionPlan = config.get(
   "activeSubscriptionPlanRequired",
@@ -102,14 +104,21 @@ async function runReviewRoutine(
       `[${requestID}] No active installation on record for org ${owner} when handling pull request action for ${repoName} (Num: ${prNum}).`,
     );
   }
+  const octokit = octokitFromInstallation(ghorg.installationID);
+
   if (enforceSubscriptionPlan && !ghorg.subscription) {
     logger.warn(
       `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
     );
+    const cfgHeadSHA = await getDefaultHeadSHA(
+      octokit,
+      ghorg.name,
+      fensakCfgRepoName,
+    );
+    await reportNoSubscriptionToUser(octokit, owner, cfgHeadSHA);
     return false;
   }
 
-  const octokit = octokitFromInstallation(ghorg.installationID);
   const cfg = await loadConfigFromGitHub(octokit, ghorg);
   if (!cfg) {
     logger.warn(
@@ -165,7 +174,7 @@ async function runReviewRoutine(
       break;
   }
 
-  const checkID = await initializeCheck(
+  const checkID = await initializeSmartReviewCheck(
     octokit,
     ghorg.name,
     repoName,
@@ -195,12 +204,12 @@ async function runReviewRoutine(
       },
     );
     if (automerge.approve) {
-      const [summary, details] = formatCheckOutputText(
+      const [summary, details] = formatSmartReviewCheckOutputText(
         automerge.approve,
         `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}).`,
         automerge.logs,
       );
-      await completeCheck(
+      await completeSmartReviewCheck(
         octokit,
         ghorg.name,
         repoName,
@@ -223,12 +232,12 @@ async function runReviewRoutine(
         requiredApprovals,
       );
     if (numApprovals >= requiredApprovals) {
-      const [summary, details] = formatCheckOutputText(
+      const [summary, details] = formatSmartReviewCheckOutputText(
         automerge.approve,
         `The change set has the required number of approvals (at least ${requiredApprovals}).${msgAnnotation}`,
         automerge.logs,
       );
-      await completeCheck(
+      await completeSmartReviewCheck(
         octokit,
         ghorg.name,
         repoName,
@@ -264,12 +273,12 @@ async function runReviewRoutine(
       }
     }
     const reason = reasonLines.join("\n");
-    const [summary, details] = formatCheckOutputText(
+    const [summary, details] = formatSmartReviewCheckOutputText(
       automerge.approve,
       reason,
       automerge.logs,
     );
-    await completeCheck(
+    await completeSmartReviewCheck(
       octokit,
       ghorg.name,
       repoName,
@@ -282,7 +291,7 @@ async function runReviewRoutine(
     logger.error(
       `[${requestID}] Error processing rule for pull request: ${err}`,
     );
-    await completeCheck(
+    await completeSmartReviewCheck(
       octokit,
       ghorg.name,
       repoName,

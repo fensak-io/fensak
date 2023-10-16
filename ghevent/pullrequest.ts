@@ -296,7 +296,7 @@ async function runReviewRoutine(
       ghorg.name,
       repoName,
       checkID,
-      "failed",
+      "failure",
       "Internal error",
       "Fensak encountered an internal error and was unable to process this Pull Request. Our team is notified of these errors and will trigger a rebuild automatically or reach out to you if further action is required. In the meantime, you can also try triggering a retry by submitting a review comment.",
     );

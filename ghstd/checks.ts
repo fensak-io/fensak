@@ -59,7 +59,7 @@ export async function completeLoadFensakCfgCheck(
     text: "",
   };
   if (errMsg != null) {
-    conclusion = "failed";
+    conclusion = "failure";
     output = {
       title: loaderCheckTitle,
       summary: "Failed to load Fensak configuration",
@@ -99,7 +99,7 @@ export async function completeSmartReviewCheck(
   owner: string,
   repo: string,
   checkID: number,
-  conclusion: "success" | "action_required" | "failed",
+  conclusion: "success" | "action_required" | "failure",
   summary: string,
   details: string,
 ): Promise<void> {

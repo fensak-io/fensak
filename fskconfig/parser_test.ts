@@ -21,6 +21,22 @@ Deno.test("parseConfigFile rejects invalid config", async () => {
   );
 });
 
+Deno.test("parseConfigFile rejects additional keys", async () => {
+  const fixtureInvalidReqAppTxt = await Deno.readTextFile(
+    path.join(__dirname, "fixtures", "invalid-additional-keys.json"),
+  );
+  assertThrows(
+    () => {
+      parseConfigFile(
+        "invalid-additional-keys.json",
+        fixtureInvalidReqAppTxt,
+      );
+    },
+    Error,
+    "config file invalid-additional-keys.json does not match expected schema",
+  );
+});
+
 Deno.test("parseConfigFile rejects invalid requiredApprovals", async () => {
   const fixtureInvalidReqAppTxt = await Deno.readTextFile(
     path.join(__dirname, "fixtures", "invalid-required-approvals.json"),

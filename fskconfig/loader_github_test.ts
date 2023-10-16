@@ -109,6 +109,6 @@ Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
         expectedHeadSHA,
       ),
     Error,
-    "exceeds the repo limit for the org",
+    "exceeds or causes the org to exceed the repo limit for the org",
   );
 });

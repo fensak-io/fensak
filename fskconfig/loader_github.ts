@@ -121,7 +121,7 @@ export async function loadConfigFromGitHub(
       }
     } catch (repE) {
       logger.error(
-        `error while reporting config load error for ${repE.ghorg.name}: ${repE}`,
+        `error while reporting config load error for ${ghorg.name}: ${repE}`,
       );
     }
 

@@ -5,6 +5,7 @@ import {
   GitHubInstallationEvent,
   GitHubPullRequestEvent,
   GitHubPullRequestReviewEvent,
+  GitHubPushEvent,
 } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
@@ -12,6 +13,7 @@ import type { GitHubEventPayload } from "../svcdata/mod.ts";
 
 import { onPullRequest } from "./pullrequest.ts";
 import { onAppMgmt } from "./installation.ts";
+import { onPush } from "./push.ts";
 
 /**
  * Handles the given GitHub event.
@@ -49,6 +51,13 @@ export async function handleGitHubEvent(
       retry = await onPullRequest(
         msg.requestID,
         msg.payload as GitHubPullRequestReviewEvent,
+      );
+      break;
+
+    case "push":
+      retry = await onPush(
+        msg.requestID,
+        msg.payload as GitHubPushEvent,
       );
       break;
   }

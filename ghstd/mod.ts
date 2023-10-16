@@ -7,3 +7,4 @@
  */
 export * from "./repo.ts";
 export * from "./org.ts";
+export * from "./checks.ts";

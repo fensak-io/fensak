@@ -41,6 +41,7 @@ export type {
   PullRequest as GitHubPullRequest,
   PullRequestEvent as GitHubPullRequestEvent,
   PullRequestReviewEvent as GitHubPullRequestReviewEvent,
+  PushEvent as GitHubPushEvent,
   User as GitHubUser,
   WebhookEvent as GitHubWebhookEvent,
   WebhookEventName as GitHubWebhookEventName,

@@ -4,7 +4,12 @@
 import { base64, config, Octokit, path, reng } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
-import { getDefaultHeadSHA } from "../ghstd/mod.ts";
+import { fensakCfgRepoName } from "../constants/mod.ts";
+import {
+  completeLoadFensakCfgCheck,
+  getDefaultHeadSHA,
+  initializeLoadFensakCfgCheck,
+} from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
   GitHubOrgWithSubscription,
@@ -19,10 +24,10 @@ import {
   storeComputedFensakConfig,
 } from "../svcdata/mod.ts";
 
+import { FensakConfigLoaderUserError } from "./errors.ts";
 import { getRuleLang, parseConfigFile } from "./parser.ts";
 
 const cfgFetchLockExpiry = 600 * 1000; // 10 minutes
-const fensakCfgRepoName = ".fensak";
 const configFileSizeLimit = config.get("configFileSizeLimit");
 const rulesFileSizeLimit = config.get("rulesFileSizeLimit");
 const enforceSubscriptionPlan = config.get(
@@ -78,7 +83,9 @@ export async function loadConfigFromGitHub(
   }
 
   logger.info(`Fetching configuration from GitHub for ${ghorg.name}`);
+  let checkID;
   try {
+    checkID = await initializeLoadFensakCfgCheck(clt, ghorg.name, headSHA);
     const cfg = await fetchAndParseConfigFromDotFensak(
       clt,
       ghorg,
@@ -90,7 +97,35 @@ export async function loadConfigFromGitHub(
       cfg,
       ghorg.subscription?.id,
     );
+    await completeLoadFensakCfgCheck(clt, ghorg.name, checkID, null);
     return cfg;
+  } catch (e) {
+    // Attempt to report the error to the user by reporting it on the GitHub check.
+    try {
+      if (!checkID) {
+        // Ignore
+      } else if (e instanceof FensakConfigLoaderUserError) {
+        await completeLoadFensakCfgCheck(
+          clt,
+          ghorg.name,
+          checkID,
+          e.toString(),
+        );
+      } else {
+        await completeLoadFensakCfgCheck(
+          clt,
+          ghorg.name,
+          checkID,
+          `Something went wrong while processing your Fensak configuration. We track errors automatically, but if it persists, please reach out to support@fensak.io`,
+        );
+      }
+    } catch (repE) {
+      logger.error(
+        `error while reporting config load error for ${ghorg.name}: ${repE}`,
+      );
+    }
+
+    throw e;
   } finally {
     await releaseLock(lock);
   }
@@ -104,18 +139,27 @@ export async function fetchAndParseConfigFromDotFensak(
   const fileLookup = await getFileLookup(clt, ghorg.name, headSHA);
   const cfgFinfo = getConfigFinfo(fileLookup);
   if (!cfgFinfo) {
-    throw new Error(
-      `could not find fensak config file in the '${ghorg.name}/.fensak' repo`,
+    throw new FensakConfigLoaderUserError(
+      `could not find fensak config file in repo \`${ghorg.name}/.fensak\``,
     );
   }
   if (cfgFinfo.size > configFileSizeLimit) {
-    throw new Error(
-      `the config file ${cfgFinfo.filename} for org ${ghorg.name} is too large (limit 1MB)`,
+    throw new FensakConfigLoaderUserError(
+      `the config file \`${cfgFinfo.filename}\` in repo \`${ghorg.name}/.fensak\` is too large (limit 1MB)`,
     );
   }
 
   const orgCfgContents = await loadFileContents(clt, ghorg.name, cfgFinfo);
-  const orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
+  let orgCfg;
+  try {
+    orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
+  } catch (e) {
+    // Translate the error into a config loader error so that it can bubble to the user.
+    throw new FensakConfigLoaderUserError(
+      `error parsing config file \`${cfgFinfo.filename}\`: ${e}`,
+    );
+  }
+
   validateRepoLimits(
     ghorg,
     Object.keys(orgCfg.repos).length,
@@ -277,8 +321,8 @@ function validateRepoLimits(
   ghorg: GitHubOrgWithSubscription,
   configRepoCount: number,
 ): void {
-  const noActiveSubErr = new Error(
-    `${ghorg.name} does not have an active subscription even though it is enforced`,
+  const noActiveSubErr = new FensakConfigLoaderUserError(
+    `\`${ghorg.name}\` does not have an active Fensak subscription plan`,
   );
 
   if (!enforceSubscriptionPlan) {
@@ -296,8 +340,8 @@ function validateRepoLimits(
 
   const totalRepoCount = configRepoCount + ghorg.subscription.repoCount;
   if (totalRepoCount > maybeLimit) {
-    throw new Error(
-      `the config file for ${ghorg.name} exceeds the repo limit for the org (limit is ${maybeLimit})`,
+    throw new FensakConfigLoaderUserError(
+      `the config file for \`${ghorg.name}\` exceeds or causes the org to exceed the repo limit for the org (limit is ${maybeLimit})`,
     );
   }
 }

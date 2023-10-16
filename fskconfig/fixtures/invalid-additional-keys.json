@@ -1,0 +1,8 @@
+{
+  "repos": {
+    "test-fensak-rules-engine": {
+      "ruleFile": "app_deploy_rule.ts",
+      "some-unknown-key": "foo"
+    }
+  }
+}

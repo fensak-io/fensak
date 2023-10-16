@@ -1,16 +1,13 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config, Octokit } from "../deps.ts";
+import { config } from "../deps.ts";
 import type { GitHubPushEvent } from "../deps.ts";
 
-import {
-  fensakCfgRepoName,
-  loaderCheckName,
-  loaderCheckTitle,
-} from "../constants/mod.ts";
+import { fensakCfgRepoName } from "../constants/mod.ts";
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
+import { reportNoSubscriptionToUser } from "../ghstd/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
 
@@ -85,24 +82,4 @@ async function handleDotFensakUpdate(
   // We request to retry on lock failure in case the config is being loaded from an older commit. loadConfigFromGitHub
   // only returns null on lock failure so we use that as the retry indicator.
   return maybeCfg == null;
-}
-
-async function reportNoSubscriptionToUser(
-  octokit: Octokit,
-  owner: string,
-  eventSHA: string,
-): Promise<void> {
-  await octokit.checks.create({
-    owner: owner,
-    repo: fensakCfgRepoName,
-    name: loaderCheckName,
-    head_sha: eventSHA,
-    status: "completed",
-    conclusion: "failure",
-    output: {
-      title: loaderCheckTitle,
-      summary: "Failed to load Fensak configuration",
-      text: "this Organization does not have an active Fensak subscription",
-    },
-  });
 }

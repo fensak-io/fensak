@@ -5,7 +5,11 @@ import { base64, config, Octokit, path, reng } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
 import { fensakCfgRepoName } from "../constants/mod.ts";
-import { getDefaultHeadSHA } from "../ghstd/mod.ts";
+import {
+  completeLoadFensakCfgCheck,
+  getDefaultHeadSHA,
+  initializeLoadFensakCfgCheck,
+} from "../ghstd/mod.ts";
 import type {
   ComputedFensakConfig,
   GitHubOrgWithSubscription,
@@ -22,8 +26,6 @@ import {
 
 import { FensakConfigLoaderUserError } from "./errors.ts";
 import { getRuleLang, parseConfigFile } from "./parser.ts";
-import { initializeLoadFensakCfgCheck } from "./loader_github_checks.ts";
-import { completeLoadFensakCfgCheck } from "./loader_github_checks.ts";
 
 const cfgFetchLockExpiry = 600 * 1000; // 10 minutes
 const configFileSizeLimit = config.get("configFileSizeLimit");

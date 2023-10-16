@@ -37,6 +37,7 @@
               "minimum": 1
             }
           },
+          "additionalProperties": false,
           "required": ["ruleFile"]
         }
       },
@@ -50,5 +51,6 @@
       }
     }
   },
+  "additionalProperties": false,
   "required": ["repos"]
 }

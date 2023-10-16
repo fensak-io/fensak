@@ -3,12 +3,17 @@
 
 import { Octokit } from "../deps.ts";
 
-import { getGitHubOrgRecord } from "../svcdata/mod.ts";
+import {
+  FensakConfigSource,
+  getComputedFensakConfig,
+  getGitHubOrgRecord,
+} from "../svcdata/mod.ts";
 import { isOrgManager } from "../ghstd/mod.ts";
 
 export interface Organization {
   slug: string;
   app_is_installed: boolean;
+  dotfensak_ready: boolean;
   subscription_id: string | null;
 }
 
@@ -32,9 +37,15 @@ export async function filterAllowedGitHubOrgsForAuthenticatedUser(
         return null;
       }
 
+      const maybeCfg = await getComputedFensakConfig(
+        FensakConfigSource.GitHub,
+        od.value.name,
+      );
+
       return {
         slug: od.value.name,
         app_is_installed: od.value.installationID != null,
+        dotfensak_ready: maybeCfg != null,
         subscription_id: od.value.subscriptionID,
       };
     }),

@@ -10,6 +10,8 @@ import {
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
 import {
+  FensakConfigSource,
+  getComputedFensakConfig,
   getSubscription,
   mustGetGitHubOrgWithSubscription,
 } from "../svcdata/mod.ts";
@@ -19,6 +21,7 @@ import { isOrgManager } from "../ghstd/mod.ts";
 interface APIOrganization {
   slug: string;
   app_is_installed: boolean;
+  dotfensak_ready: boolean;
   subscription: APISubscription | null;
   is_main_org: boolean;
 }
@@ -87,6 +90,7 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
     outData.push({
       slug: o.slug,
       app_is_installed: o.app_is_installed,
+      dotfensak_ready: o.dotfensak_ready,
       subscription: subscription,
       is_main_org: isMainOrg,
     });
@@ -116,6 +120,11 @@ async function handleGetOneOrganization(
     return;
   }
 
+  const maybeCfg = await getComputedFensakConfig(
+    FensakConfigSource.GitHub,
+    ghorg.name,
+  );
+
   let apis: APISubscription | null = null;
   let isMainOrg = false;
   if (ghorg.subscription) {
@@ -130,6 +139,7 @@ async function handleGetOneOrganization(
   const apio: APIOrganization = {
     slug: ghorg.name,
     app_is_installed: ghorg.installationID != null,
+    dotfensak_ready: maybeCfg != null,
     subscription: apis,
     is_main_org: isMainOrg,
   };

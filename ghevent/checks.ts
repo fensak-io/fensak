@@ -3,8 +3,10 @@
 
 import { Octokit, reng } from "../deps.ts";
 
-const checkName = "smart review";
-const checkTitle = "Fensak smart review";
+import {
+  smartReviewCheckName,
+  smartReviewCheckTitle,
+} from "../constants/mod.ts";
 
 export async function initializeCheck(
   clt: Octokit,
@@ -15,7 +17,7 @@ export async function initializeCheck(
   const { data: check } = await clt.checks.create({
     owner: owner,
     repo: repo,
-    name: checkName,
+    name: smartReviewCheckName,
     head_sha: headSHA,
     status: "in_progress",
   });
@@ -34,12 +36,12 @@ export async function completeCheck(
   await clt.checks.update({
     owner: owner,
     repo: repo,
-    name: checkName,
+    name: smartReviewCheckName,
     check_run_id: checkID,
     status: "completed",
     conclusion: conclusion,
     output: {
-      title: checkTitle,
+      title: smartReviewCheckTitle,
       summary: summary,
       text: details,
     },

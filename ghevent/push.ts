@@ -1,10 +1,14 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config } from "../deps.ts";
+import { config, Octokit } from "../deps.ts";
 import type { GitHubPushEvent } from "../deps.ts";
 
-import { fensakCfgRepoName } from "../constants/mod.ts";
+import {
+  fensakCfgRepoName,
+  loaderCheckName,
+  loaderCheckTitle,
+} from "../constants/mod.ts";
 import { logger } from "../logging/mod.ts";
 import { octokitFromInstallation } from "../ghauth/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
@@ -45,6 +49,7 @@ export async function onPush(
   return await handleDotFensakUpdate(
     requestID,
     payload.repository.owner.login,
+    payload.after,
   );
 }
 
@@ -54,27 +59,50 @@ export async function onPush(
 async function handleDotFensakUpdate(
   requestID: string,
   owner: string,
+  eventSHA: string,
 ): Promise<boolean> {
   const ghorg = await mustGetGitHubOrgWithSubscription(owner);
   if (!ghorg.installationID) {
     // We fail loudly in this case because this is a bug in the system as it doesn't make sense that the installation
-    // event wasn't handled by the time we start getting pull requests for an Org.
+    // event wasn't handled by the time we start getting push for an Org.
     throw new Error(
       `[${requestID}] No active installation on record for org ${owner} when handling push to '.fensak'.`,
     );
   }
+  const octokit = octokitFromInstallation(ghorg.installationID);
+
   if (enforceSubscriptionPlan && !ghorg.subscription) {
     logger.warn(
-      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
+      `[${requestID}] Ignoring push to '.fensak' for org ${owner} - no active subscription plan on record.`,
     );
+    await reportNoSubscriptionToUser(octokit, owner, eventSHA);
     return false;
   }
 
-  const octokit = octokitFromInstallation(ghorg.installationID);
   // loadConfigFromGitHub will store the config in the database so we don't need to do anything with the return result.
   const maybeCfg = await loadConfigFromGitHub(octokit, ghorg);
 
   // We request to retry on lock failure in case the config is being loaded from an older commit. loadConfigFromGitHub
   // only returns null on lock failure so we use that as the retry indicator.
   return maybeCfg == null;
+}
+
+async function reportNoSubscriptionToUser(
+  octokit: Octokit,
+  owner: string,
+  eventSHA: string,
+): Promise<void> {
+  await octokit.checks.create({
+    owner: owner,
+    repo: fensakCfgRepoName,
+    name: loaderCheckName,
+    head_sha: eventSHA,
+    status: "completed",
+    conclusion: "failure",
+    output: {
+      title: loaderCheckTitle,
+      summary: "Failed to load Fensak configuration",
+      text: "this Organization does not have an active Fensak subscription",
+    },
+  });
 }

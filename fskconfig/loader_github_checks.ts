@@ -3,10 +3,11 @@
 
 import { Octokit } from "../deps.ts";
 
-import { fensakCfgRepoName } from "../constants/mod.ts";
-
-const checkName = "load config";
-const checkTitle = "Fensak";
+import {
+  fensakCfgRepoName,
+  loaderCheckName,
+  loaderCheckTitle,
+} from "../constants/mod.ts";
 
 export async function initializeLoadFensakCfgCheck(
   clt: Octokit,
@@ -16,7 +17,7 @@ export async function initializeLoadFensakCfgCheck(
   const { data: check } = await clt.checks.create({
     owner: owner,
     repo: fensakCfgRepoName,
-    name: checkName,
+    name: loaderCheckName,
     head_sha: headSHA,
     status: "in_progress",
   });
@@ -31,14 +32,14 @@ export async function completeLoadFensakCfgCheck(
 ): Promise<void> {
   let conclusion = "success";
   let output = {
-    title: checkTitle,
+    title: loaderCheckTitle,
     summary: "Successfully loaded Fensak configuration",
     text: "",
   };
   if (errMsg != null) {
     conclusion = "failed";
     output = {
-      title: checkTitle,
+      title: loaderCheckTitle,
       summary: "Failed to load Fensak configuration",
       text: errMsg,
     };
@@ -47,7 +48,7 @@ export async function completeLoadFensakCfgCheck(
   await clt.checks.update({
     owner: owner,
     repo: fensakCfgRepoName,
-    name: checkName,
+    name: loaderCheckName,
     check_run_id: checkID,
     status: "completed",
     conclusion: conclusion,

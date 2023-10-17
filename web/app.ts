@@ -4,7 +4,6 @@
 import { Application, basemiddlewares, config, Router } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
-import { flushLoki as flushLokiMiddleware } from "../middlewares/mod.ts";
 
 import { attachRoutes } from "./routes.ts";
 import { attachMgmtAPIRoutes } from "./mgmt_routes.ts";
@@ -14,7 +13,6 @@ const enableMgmtAPI = config.get("managementAPI.enabled");
 export async function startWebServer(): Promise<void> {
   const app = new Application();
 
-  app.use(flushLokiMiddleware);
   app.use(basemiddlewares.newLoggerMiddleware(logger));
   app.use(basemiddlewares.newErrorMiddleware(logger));
   app.use(basemiddlewares.timing);

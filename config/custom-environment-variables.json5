@@ -45,6 +45,13 @@
       host: "FENSAK_LOGGING_LOKI_HOST",
       basicAuth: "FENSAK_LOGGING_LOKI_BASIC_AUTH",
     },
+    sentry: {
+      enabled: {
+        __name: "FENSAK_LOGGING_SENTRY_ENABLED",
+        __format: "boolean",
+      },
+      dsn: "FENSAK_LOGGING_SENTRY_DSN",
+    },
   },
   github: {
     allowedOrgs: {

@@ -26,6 +26,8 @@ export async function onAppMgmt(
   requestID: string,
   payload: GitHubInstallationEvent,
 ): Promise<boolean> {
+  // IMPORTANT
+  // If a new case condition is added here, you must update allowedInstallationEvents in handler.ts!
   let retry = false;
   switch (payload.action) {
     default:

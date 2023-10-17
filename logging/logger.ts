@@ -5,9 +5,11 @@ import { config, winston, WinstonLoki, WinstonTransport } from "../deps.ts";
 
 const serviceEnv = config.get("env");
 const loggingLevel = config.get("logging.level");
+const sentryEnabled = config.get("logging.sentry.enabled");
 const lokiEnabled = config.get("logging.loki.enabled");
 const lokiHost = config.get("logging.loki.host");
 const lokiAuth = config.get("logging.loki.basicAuth");
+
 export let lokiTransport: WinstonLoki;
 if (lokiEnabled) {
   lokiTransport = new WinstonLoki({
@@ -30,6 +32,9 @@ export function logConfig(): void {
   logger.info(`rulesFileSizeLimit: ${config.get("rulesFileSizeLimit")}`);
   if (lokiEnabled) {
     logger.info(`Shipping logs to Loki host: ${lokiHost}`);
+  }
+  if (sentryEnabled) {
+    logger.info(`Reporting errors to Sentry`);
   }
 
   const repoLimits = config.get("planRepoLimits");

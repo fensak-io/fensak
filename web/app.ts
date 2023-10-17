@@ -4,6 +4,9 @@
 import { Application, basemiddlewares, config, Router } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
+import {
+  sentryReportError as sentryReportErrorMiddleware,
+} from "../middlewares/mod.ts";
 
 import { attachRoutes } from "./routes.ts";
 import { attachMgmtAPIRoutes } from "./mgmt_routes.ts";
@@ -15,6 +18,7 @@ export async function startWebServer(): Promise<void> {
 
   app.use(basemiddlewares.newLoggerMiddleware(logger));
   app.use(basemiddlewares.newErrorMiddleware(logger));
+  app.use(sentryReportErrorMiddleware);
   app.use(basemiddlewares.timing);
   app.use(basemiddlewares.requestId);
   app.use(basemiddlewares.unsupportedRoute);

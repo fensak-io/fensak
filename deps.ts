@@ -58,6 +58,10 @@ export {
   babelPresetTypescript,
   config,
 };
+
+import * as Sentry from "npm:@sentry/node@^7.74.1";
+export { Sentry };
+
 // Must use esm.sh version for auth-app. See https://github.com/octokit/auth-app.js/issues/465
 export { createAppAuth as octokitCreateAppAuth } from "https://esm.sh/@octokit/auth-app@6.0.1";
 // Must use esm.sh version for auth-oauth-app. See https://github.com/octokit/auth-app.js/issues/465

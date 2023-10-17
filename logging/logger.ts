@@ -8,6 +8,19 @@ const loggingLevel = config.get("logging.level");
 const lokiEnabled = config.get("logging.loki.enabled");
 const lokiHost = config.get("logging.loki.host");
 const lokiAuth = config.get("logging.loki.basicAuth");
+export let lokiTransport: WinstonLoki;
+if (lokiEnabled) {
+  lokiTransport = new WinstonLoki({
+    host: lokiHost,
+    basicAuth: lokiAuth,
+    replaceTimestamp: true,
+    json: true,
+    labels: {
+      service: "fensak",
+      env: serviceEnv,
+    },
+  });
+}
 
 export const logger = initializeLogger();
 
@@ -60,17 +73,7 @@ function initializeLogger(): winston.Logger {
     new winston.transports.Console({ format: winston.format.simple() }),
   ];
   if (lokiEnabled) {
-    transports.push(
-      new WinstonLoki({
-        host: lokiHost,
-        basicAuth: lokiAuth,
-        replaceTimestamp: true,
-        labels: {
-          service: "fensak",
-          env: serviceEnv,
-        },
-      }),
-    );
+    transports.push(lokiTransport);
   }
   return winston.createLogger({
     level: loggingLevel,

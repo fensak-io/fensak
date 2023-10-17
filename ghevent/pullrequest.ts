@@ -47,6 +47,8 @@ export async function onPullRequest(
   requestID: string,
   payload: GitHubPullRequestEvent | GitHubPullRequestReviewEvent,
 ): Promise<boolean> {
+  // IMPORTANT
+  // If a new case condition is added here, you must update allowedInstallationEvents in handler.ts!
   switch (payload.action) {
     default:
       logger.debug(

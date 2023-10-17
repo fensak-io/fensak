@@ -3,12 +3,14 @@
 
 import { Context, GitHubWebhookEventName, Router, Status } from "../deps.ts";
 
+import { logger } from "../logging/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 import {
   enqueueMsg,
   MessageType,
   waitForHealthCheckResult,
 } from "../svcdata/mod.ts";
+import { fastRejectEvent } from "../ghevent/mod.ts";
 import { getRandomString } from "../xtd/mod.ts";
 
 export function attachRoutes(router: Router): void {
@@ -62,13 +64,20 @@ async function handleGitHubWebhooks(ctx: Context): Promise<void> {
     return;
   }
 
+  const eventName = ghEventName as GitHubWebhookEventName;
   const body = ctx.request.body({ type: "json" });
   const payload = await body.value;
+  if (fastRejectEvent(eventName, payload)) {
+    logger.debug(`[${ghEventID}] Rejecting event because of fast filter`);
+    ctx.response.status = Status.NoContent;
+    return;
+  }
+
   await enqueueMsg({
     type: MessageType.GitHubEvent,
     payload: {
       requestID: ghEventID,
-      eventName: ghEventName as GitHubWebhookEventName,
+      eventName: eventName,
       payload: payload,
     },
   });

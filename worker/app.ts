@@ -1,7 +1,9 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { logger } from "../logging/mod.ts";
+import { config } from "../deps.ts";
+
+import { logger, lokiTransport } from "../logging/mod.ts";
 import { handleGitHubEvent } from "../ghevent/mod.ts";
 import {
   enqueueMsg,
@@ -13,12 +15,23 @@ import {
 import type { GitHubEventPayload, HealthCheckPayload } from "../svcdata/mod.ts";
 
 const retryDelay = 5 * 1000; // 5 seconds
+const lokiEnabled = config.get("logging.loki.enabled");
 
 export function startWorker(): void {
   listenQueue(handler);
 }
 
 async function handler(msg: Message): Promise<void> {
+  try {
+    await runHandler(msg);
+  } finally {
+    if (lokiEnabled) {
+      await lokiTransport.flush();
+    }
+  }
+}
+
+async function runHandler(msg: Message): Promise<void> {
   let retry = false;
   switch (msg.type) {
     case MessageType.Unknown:

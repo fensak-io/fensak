@@ -14,7 +14,7 @@
           "type": "object",
           "properties": {
             "ruleFile": {
-              "description": "The path (relative to the repo root) to the file to use for the auto-approve rules source.",
+              "description": "The path (relative to the repo root) to the file to use for the auto-approve rules source. When omitted, there is no auto-approval rule. One of requiredRuleFile or ruleFile is required.",
               "type": "string"
             },
             "ruleLang": {
@@ -22,7 +22,7 @@
               "enum": ["es5", "es6", "ts"]
             },
             "requiredRuleFile": {
-              "description": "The path (relative to the repo root) to the file to use for the required rules source. Required rules are rules that all PRs must pass for the check to pass. When omitted, there is no required rules.",
+              "description": "The path (relative to the repo root) to the file to use for the required rules source. Required rules are rules that all PRs must pass for the check to pass. When omitted, there is no required rules. One of requiredRuleFile or ruleFile is required.",
               "type": "string"
             },
             "requiredRuleLang": {
@@ -32,21 +32,31 @@
             "requiredApprovals": {
               "description": "The number of unique approvals from users with write access that are required to pass the check when the auto-approve rule fails. If omitted, defaults to 1.",
               "type": "integer",
-              "minimum": 1
+              "minimum": 0
             },
             "requiredApprovalsForTrustedUsers": {
               "description": "The number of unique approvals from users with write access that are required to pass the check for pull requests opened by trusted users when the auto-approve rule fails. If omitted, defaults to the value set in requiredApprovals.",
               "type": "integer",
-              "minimum": 1
+              "minimum": 0
             },
             "requiredApprovalsForMachineUsers": {
               "description": "The number of unique approvals from human users with write access that are required to pass the check for pull requests opened by machine users (GitHub Apps, or any user labeled as a machine user in the machineUsers top level key) when the auto-approve rule fails. If omitted, defaults to the value set in requiredApprovals.",
               "type": "integer",
-              "minimum": 1
+              "minimum": 0
             }
           },
           "additionalProperties": false,
-          "required": ["ruleFile"]
+          "anyOf": [
+            {
+              "required": ["ruleFile"]
+            },
+            {
+              "required": ["requiredRuleFile"]
+            },
+            {
+              "required": ["ruleFile", "requiredRuleFile"]
+            }
+          ]
         }
       },
       "minProperties": 1

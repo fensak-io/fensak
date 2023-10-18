@@ -10,6 +10,7 @@
       "npm:@octokit/rest@^20.0.2": "npm:@octokit/rest@20.0.2_@octokit+core@5.0.1",
       "npm:@octokit/webhooks-types@7.1.0": "npm:@octokit/webhooks-types@7.1.0",
       "npm:@octokit/webhooks@^12.0.3": "npm:@octokit/webhooks@12.0.3",
+      "npm:@types/node": "npm:@types/node@18.16.19",
       "npm:ajv@^8.12.0": "npm:ajv@8.12.0",
       "npm:babel-preset-minify@^0.5.2": "npm:babel-preset-minify@0.5.2",
       "npm:config@^3.3.9": "npm:config@3.3.9",
@@ -1204,6 +1205,10 @@
       },
       "@protobufjs/utf8@1.1.0": {
         "integrity": "sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==",
+        "dependencies": {}
+      },
+      "@types/node@18.16.19": {
+        "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==",
         "dependencies": {}
       },
       "@types/node@20.8.2": {

@@ -121,7 +121,8 @@ export async function completeSmartReviewCheck(
 export function formatSmartReviewCheckOutputText(
   pass: boolean,
   reason: string,
-  logEntries: reng.IRuleLogEntry[],
+  requiredRuleLogEntries: reng.IRuleLogEntry[],
+  automergeLogEntries: reng.IRuleLogEntry[],
 ): [string, string] {
   const outputLines = [];
 
@@ -135,10 +136,20 @@ export function formatSmartReviewCheckOutputText(
   outputLines.push(reason);
   outputLines.push("");
 
-  if (logEntries.length > 0) {
-    outputLines.push("## Rule function logs");
+  if (requiredRuleLogEntries.length > 0) {
+    outputLines.push("## Required rule function logs");
     outputLines.push("```");
-    for (const l of logEntries) {
+    for (const l of requiredRuleLogEntries) {
+      outputLines.push(`[${l.level}] ${l.msg}`);
+    }
+    outputLines.push("```");
+    outputLines.push("");
+  }
+
+  if (automergeLogEntries.length > 0) {
+    outputLines.push("## Auto-approval rule function logs");
+    outputLines.push("```");
+    for (const l of automergeLogEntries) {
       outputLines.push(`[${l.level}] ${l.msg}`);
     }
     outputLines.push("```");

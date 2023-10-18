@@ -7,4 +7,3 @@
  */
 export * from "./ghevent.ts";
 export * from "./mgmt.ts";
-export * from "./loki.ts";

@@ -199,6 +199,7 @@ async function runReviewRoutine(
     const automerge = await reng.runRule(
       ruleFn.compiledRule,
       patch.patchList,
+      patch.metadata,
       {
         fileFetchMap: fetchMap,
         // TODO: make this configurable by user

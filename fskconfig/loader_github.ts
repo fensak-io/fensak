@@ -268,17 +268,24 @@ async function loadRuleFiles(
   const ruleFilesToLoad: Record<string, reng.RuleFnSourceLang> = {};
   for (const repoName in orgCfg.repos) {
     const repoCfg = orgCfg.repos[repoName];
-    if (ruleFilesToLoad[repoCfg.ruleFile]) {
-      // Skip because it is already accounted for
-      continue;
-    }
+    if (!ruleFilesToLoad[repoCfg.ruleFile]) {
+      // This is redundant and unnecessary, but it makes the compiler happy.
+      if (!repoCfg.ruleLang) {
+        repoCfg.ruleLang = getRuleLang(repoCfg.ruleFile);
+      }
 
-    // This is redundant and unnecessary, but it makes the compiler happy.
-    if (!repoCfg.ruleLang) {
-      repoCfg.ruleLang = getRuleLang(repoCfg.ruleFile);
+      ruleFilesToLoad[repoCfg.ruleFile] = repoCfg.ruleLang;
     }
+    if (
+      repoCfg.requiredRuleFile && !ruleFilesToLoad[repoCfg.requiredRuleFile]
+    ) {
+      // This is redundant and unnecessary, but it makes the compiler happy.
+      if (!repoCfg.requiredRuleLang) {
+        repoCfg.requiredRuleLang = getRuleLang(repoCfg.requiredRuleFile);
+      }
 
-    ruleFilesToLoad[repoCfg.ruleFile] = repoCfg.ruleLang;
+      ruleFilesToLoad[repoCfg.requiredRuleFile] = repoCfg.requiredRuleLang;
+    }
   }
 
   const out: RuleLookup = {};

@@ -21,6 +21,7 @@ import {
 } from "../ghstd/mod.ts";
 import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
+import type { CompiledRuleSource } from "../svcdata/mod.ts";
 
 const enforceSubscriptionPlan = config.get(
   "activeSubscriptionPlanRequired",
@@ -146,6 +147,15 @@ async function runReviewRoutine(
   }
   const ruleFileURL = ruleFn.fileURL;
 
+  let requiredRuleFn: CompiledRuleSource | undefined;
+  if (repoCfg.requiredRuleFile) {
+    requiredRuleFn = cfg.ruleLookup[repoCfg.requiredRuleFile];
+    logger.warn(
+      `[${requestID}] Compiled required rule function could not be found for repository ${repoName}.`,
+    );
+    return false;
+  }
+
   const authorType = await determineAuthorType(
     octokit,
     cfg.orgConfig.machineUsers,
@@ -193,9 +203,41 @@ async function runReviewRoutine(
       prNum,
     );
 
-    // Check the auto-approve rule
     const fetchMap: Record<string, Record<string, URL>> = {};
     fetchMap[reng.SourcePlatform.GitHub] = patch.patchFetchMap;
+
+    // Check the required rule if specified
+    if (requiredRuleFn) {
+      const required = await reng.runRule(
+        requiredRuleFn.compiledRule,
+        patch.patchList,
+        patch.metadata,
+        {
+          fileFetchMap: fetchMap,
+          // TODO: make this configurable by user
+          logMode: reng.RuleLogMode.Capture,
+        },
+      );
+      if (!required.approve) {
+        const [summary, details] = formatSmartReviewCheckOutputText(
+          false,
+          `The change set failed the required rule [${repoCfg.requiredRuleFile}](${requiredRuleFn.fileURL}).`,
+          required.logs,
+        );
+        await completeSmartReviewCheck(
+          octokit,
+          ghorg.name,
+          repoName,
+          checkID,
+          "action_required",
+          summary,
+          details,
+        );
+        return false;
+      }
+    }
+
+    // Check the auto-approve rule
     const automerge = await reng.runRule(
       ruleFn.compiledRule,
       patch.patchList,

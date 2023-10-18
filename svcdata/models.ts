@@ -67,6 +67,12 @@ export interface OrgConfig {
  * @property ruleFile The path (relative to the repo root) to the file to use for the rules source.
  * @property ruleLang The language that the rules source is written in. If omitted, the language is derived from the
  *                    source file extension. Note that we will always assume ES6 for js files.
+ * @property requiredRuleFile The path (relative to the repo root) to the file to use for the required rules source.
+ *                            Required rules are rules that all PRs must pass for the check to pass. When omitted, there
+ *                            is no required rules.
+ * @property requiredRuleLang The language that the required rules source is written in. If omitted, the language is
+ *                            derived from the source file extension of the requiredRuleFile parameter. Note that we
+ *                            will always assume ES6 for js files.
  * @property requiredApprovals The number of unique approvals from users with write access that are required to pass the
  *                             check when the auto-approve rule fails. If omitted, defaults to 1.
  * @property requiredApprovalsForTrustedUsers The number of unique approvals from users with write access that are
@@ -82,6 +88,8 @@ export interface OrgConfig {
 export interface RepoConfig {
   ruleFile: string;
   ruleLang?: reng.RuleFnSourceLang;
+  requiredRuleFile?: string;
+  requiredRuleLang?: reng.RuleFnSourceLang;
   requiredApprovals?: number;
   requiredApprovalsForTrustedUsers?: number;
   requiredApprovalsForMachineUsers?: number;

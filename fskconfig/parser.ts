@@ -56,7 +56,9 @@ export function parseConfigFile(
 
   // Configure defaults:
   // - set the machineUsers top level key to empty array if unset.
-  // - set the repoLang based on the filename extension if any entry is missing it.
+  // - set the ruleLang based on the filename extension if any entry is missing it.
+  // - set the requiredRuleLang based on the filename extension if any entry is missing it and requiredRuleFile is
+  //   configured.
   // - set the requiredApprovals to 1 if it is unset.
   // - set the requiredApprovalsForMachineUsers and requiredApprovalsForTrustedUsers to requiredApprovals if it is
   //   unset.
@@ -67,6 +69,11 @@ export function parseConfigFile(
     const cfg = typedData.repos[repoName];
     if (!cfg.ruleLang) {
       typedData.repos[repoName].ruleLang = getRuleLang(cfg.ruleFile);
+    }
+    if (cfg.requiredRuleFile && !cfg.requiredRuleLang) {
+      typedData.repos[repoName].requiredRuleLang = getRuleLang(
+        cfg.requiredRuleFile,
+      );
     }
     if (!cfg.requiredApprovals) {
       typedData.repos[repoName].requiredApprovals = 1;

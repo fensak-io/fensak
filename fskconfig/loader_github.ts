@@ -268,7 +268,7 @@ async function loadRuleFiles(
   const ruleFilesToLoad: Record<string, reng.RuleFnSourceLang> = {};
   for (const repoName in orgCfg.repos) {
     const repoCfg = orgCfg.repos[repoName];
-    if (!ruleFilesToLoad[repoCfg.ruleFile]) {
+    if (repoCfg.ruleFile && !ruleFilesToLoad[repoCfg.ruleFile]) {
       // This is redundant and unnecessary, but it makes the compiler happy.
       if (!repoCfg.ruleLang) {
         repoCfg.ruleLang = getRuleLang(repoCfg.ruleFile);

@@ -86,7 +86,7 @@ export interface OrgConfig {
  *                                    requiredApprovals.
  */
 export interface RepoConfig {
-  ruleFile: string;
+  ruleFile?: string;
   ruleLang?: reng.RuleFnSourceLang;
   requiredRuleFile?: string;
   requiredRuleLang?: reng.RuleFnSourceLang;

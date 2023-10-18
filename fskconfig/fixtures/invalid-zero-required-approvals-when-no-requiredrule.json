@@ -1,0 +1,9 @@
+{
+  "repos": {
+    "test-fensak-rules-engine": {
+      "ruleFile": "app_deploy_rule.ts",
+      "ruleLang": "ts",
+      "requiredApprovals": 0
+    }
+  }
+}

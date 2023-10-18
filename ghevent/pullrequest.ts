@@ -138,14 +138,16 @@ async function runReviewRoutine(
     return false;
   }
 
-  const ruleFn = cfg.ruleLookup[repoCfg.ruleFile];
-  if (!ruleFn) {
-    logger.warn(
-      `[${requestID}] Compiled rule function could not be found for repository ${repoName}.`,
-    );
-    return false;
+  let ruleFn: CompiledRuleSource | undefined;
+  if (repoCfg.ruleFile) {
+    ruleFn = cfg.ruleLookup[repoCfg.ruleFile];
+    if (!ruleFn) {
+      logger.warn(
+        `[${requestID}] Compiled rule function could not be found for repository ${repoName}.`,
+      );
+      return false;
+    }
   }
-  const ruleFileURL = ruleFn.fileURL;
 
   let requiredRuleFn: CompiledRuleSource | undefined;
   if (repoCfg.requiredRuleFile) {
@@ -168,21 +170,35 @@ async function runReviewRoutine(
   let msgAnnotation = "";
   switch (authorType) {
     case AuthorType.TrustedUser:
-      requiredApprovals = repoCfg.requiredApprovalsForTrustedUsers ||
-        repoCfg.requiredApprovals || 1;
+      if (repoCfg.requiredApprovalsForTrustedUsers !== undefined) {
+        requiredApprovals = repoCfg.requiredApprovalsForTrustedUsers;
+      } else if (repoCfg.requiredApprovals !== undefined) {
+        requiredApprovals = repoCfg.requiredApprovals;
+      } else {
+        requiredApprovals = 1;
+      }
       msgAnnotation =
         "\n**NOTE**: PR was detected to be opened by a trusted user.";
       break;
 
     case AuthorType.MachineUser:
-      requiredApprovals = repoCfg.requiredApprovalsForMachineUsers ||
-        repoCfg.requiredApprovals || 1;
+      if (repoCfg.requiredApprovalsForMachineUsers !== undefined) {
+        requiredApprovals = repoCfg.requiredApprovalsForMachineUsers;
+      } else if (repoCfg.requiredApprovals !== undefined) {
+        requiredApprovals = repoCfg.requiredApprovals;
+      } else {
+        requiredApprovals = 1;
+      }
       msgAnnotation =
         "\n**NOTE**: PR was detected to be opened by a machine user.";
       break;
 
     default:
-      requiredApprovals = repoCfg.requiredApprovals || 1;
+      if (repoCfg.requiredApprovals !== undefined) {
+        requiredApprovals = repoCfg.requiredApprovals;
+      } else {
+        requiredApprovals = 1;
+      }
       break;
   }
 
@@ -207,6 +223,7 @@ async function runReviewRoutine(
     fetchMap[reng.SourcePlatform.GitHub] = patch.patchFetchMap;
 
     // Check the required rule if specified
+    let requiredLogs: reng.IRuleLogEntry[] = [];
     if (requiredRuleFn) {
       const required = await reng.runRule(
         requiredRuleFn.compiledRule,
@@ -223,6 +240,7 @@ async function runReviewRoutine(
           false,
           `The change set failed the required rule [${repoCfg.requiredRuleFile}](${requiredRuleFn.fileURL}).`,
           required.logs,
+          [],
         );
         await completeSmartReviewCheck(
           octokit,
@@ -235,35 +253,63 @@ async function runReviewRoutine(
         );
         return false;
       }
+
+      // Skip the auto-approval rule and pass the check if no approvals are required, since the result of the
+      // auto-approval rule has no effect.
+      if (requiredApprovals == 0) {
+        const [summary, details] = formatSmartReviewCheckOutputText(
+          true,
+          "The change set passed the required rule and no approvals are required.",
+          required.logs,
+          [],
+        );
+        await completeSmartReviewCheck(
+          octokit,
+          ghorg.name,
+          repoName,
+          checkID,
+          "success",
+          summary,
+          details,
+        );
+        return false;
+      }
+
+      requiredLogs = required.logs;
     }
 
     // Check the auto-approve rule
-    const automerge = await reng.runRule(
-      ruleFn.compiledRule,
-      patch.patchList,
-      patch.metadata,
-      {
-        fileFetchMap: fetchMap,
-        // TODO: make this configurable by user
-        logMode: reng.RuleLogMode.Capture,
-      },
-    );
-    if (automerge.approve) {
-      const [summary, details] = formatSmartReviewCheckOutputText(
-        automerge.approve,
-        `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}).`,
-        automerge.logs,
+    let automergeLogs: reng.IRuleLogEntry[] = [];
+    if (ruleFn) {
+      const automerge = await reng.runRule(
+        ruleFn.compiledRule,
+        patch.patchList,
+        patch.metadata,
+        {
+          fileFetchMap: fetchMap,
+          // TODO: make this configurable by user
+          logMode: reng.RuleLogMode.Capture,
+        },
       );
-      await completeSmartReviewCheck(
-        octokit,
-        ghorg.name,
-        repoName,
-        checkID,
-        "success",
-        summary,
-        details,
-      );
-      return false;
+      if (automerge.approve) {
+        const [summary, details] = formatSmartReviewCheckOutputText(
+          automerge.approve,
+          `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}).`,
+          requiredLogs,
+          automerge.logs,
+        );
+        await completeSmartReviewCheck(
+          octokit,
+          ghorg.name,
+          repoName,
+          checkID,
+          "success",
+          summary,
+          details,
+        );
+        return false;
+      }
+      automergeLogs = automerge.logs;
     }
 
     // Failed auto-approval check, so fall back to checking for required approvals.
@@ -278,9 +324,10 @@ async function runReviewRoutine(
       );
     if (numApprovals >= requiredApprovals) {
       const [summary, details] = formatSmartReviewCheckOutputText(
-        automerge.approve,
+        true,
         `The change set has the required number of approvals (at least ${requiredApprovals}).${msgAnnotation}`,
-        automerge.logs,
+        requiredLogs,
+        automergeLogs,
       );
       await completeSmartReviewCheck(
         octokit,
@@ -296,9 +343,15 @@ async function runReviewRoutine(
 
     // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
     const reasonLines = [];
-    reasonLines.push(
-      `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
-    );
+    if (ruleFn) {
+      reasonLines.push(
+        `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
+      );
+    } else {
+      reasonLines.push(
+        `The change set does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
+      );
+    }
     if (untrustedUserApprovalUsers.length > 0) {
       reasonLines.push("");
       reasonLines.push(
@@ -319,9 +372,10 @@ async function runReviewRoutine(
     }
     const reason = reasonLines.join("\n");
     const [summary, details] = formatSmartReviewCheckOutputText(
-      automerge.approve,
+      false,
       reason,
-      automerge.logs,
+      requiredLogs,
+      automergeLogs,
     );
     await completeSmartReviewCheck(
       octokit,

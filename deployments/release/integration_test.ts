@@ -145,7 +145,7 @@ Deno.test("auto-approve happy path for README update", async (t) => {
       repoName,
       branchName,
     );
-    assertEquals(checkRun.conclusion, "success");
+    expectCheckConclusion(checkRun, "success");
   });
 
   await t.step("[cleanup] close PR", async () => {
@@ -215,7 +215,7 @@ Deno.test("manual review required for config update", async (t) => {
       previousCheckRuns,
     );
     previousCheckRuns.push(checkRun.id);
-    assertEquals(checkRun.conclusion, "action_required");
+    expectCheckConclusion(checkRun, "action_required");
   });
 
   await t.step(
@@ -236,7 +236,7 @@ Deno.test("manual review required for config update", async (t) => {
         previousCheckRuns,
       );
       previousCheckRuns.push(checkRun.id);
-      assertEquals(checkRun.conclusion, "action_required");
+      expectCheckConclusion(checkRun, "action_required");
     },
   );
 
@@ -258,7 +258,260 @@ Deno.test("manual review required for config update", async (t) => {
         previousCheckRuns,
       );
       previousCheckRuns.push(checkRun.id);
-      assertEquals(checkRun.conclusion, "success");
+      expectCheckConclusion(checkRun, "success");
+    },
+  );
+
+  await t.step("[cleanup] close PR", async () => {
+    if (prNum) {
+      await testCommitterOctokit.pulls.update({
+        owner: testOrg,
+        repo: repoName,
+        pull_number: prNum,
+        state: "closed",
+      });
+    }
+  });
+
+  await t.step("[cleanup] delete branch", async () => {
+    await deleteBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+});
+
+Deno.test("failed required rule fails check", async (t) => {
+  const repoName = "test-fensak-automated-appdeploy";
+  const branchName = `test/update-config-${getRandomString(6)}`;
+  const defaultBranchName = "main";
+  const previousCheckRuns: number[] = [];
+  let prNum = 0;
+
+  await t.step("create branch", async () => {
+    await createBranchFromDefault(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+
+  await t.step("commit update to appversions.json and open PR", async () => {
+    await commitFileUpdateToBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      "appversions.json",
+      '{\n  "coreapp": "v0.1.0",\n  "subapp": "v1.2.0",\n  "logapp": "v100.1.0"\n}',
+    );
+
+    const { data: pullRequest } = await testCommitterOctokit.pulls.create({
+      owner: testOrg,
+      repo: repoName,
+      head: branchName,
+      base: defaultBranchName,
+      title: "[automated-staging-test] Failed required review fails check",
+    });
+    prNum = pullRequest.number;
+  });
+
+  await t.step("validate check failed from Fensak Staging", async () => {
+    const checkRun = await waitForFensakStagingCheck(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      previousCheckRuns,
+    );
+    previousCheckRuns.push(checkRun.id);
+    expectCheckConclusion(checkRun, "action_required");
+  });
+
+  await t.step(
+    "approve with trusted user and validate check still fails from Fensak Staging",
+    async () => {
+      await approvePR(
+        fensakOpsAdminOctokit,
+        testOrg,
+        repoName,
+        prNum,
+      );
+
+      const checkRun = await waitForFensakStagingCheck(
+        testCommitterOctokit,
+        testOrg,
+        repoName,
+        branchName,
+        previousCheckRuns,
+      );
+      previousCheckRuns.push(checkRun.id);
+      expectCheckConclusion(checkRun, "action_required");
+    },
+  );
+
+  await t.step("[cleanup] close PR", async () => {
+    if (prNum) {
+      await testCommitterOctokit.pulls.update({
+        owner: testOrg,
+        repo: repoName,
+        pull_number: prNum,
+        state: "closed",
+      });
+    }
+  });
+
+  await t.step("[cleanup] delete branch", async () => {
+    await deleteBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+});
+
+Deno.test("passed required rule and passed automerge passes check", async (t) => {
+  const repoName = "test-fensak-automated-appdeploy";
+  const branchName = `feature/update-config-${getRandomString(6)}`;
+  const defaultBranchName = "main";
+  const previousCheckRuns: number[] = [];
+  let prNum = 0;
+
+  await t.step("create branch", async () => {
+    await createBranchFromDefault(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+
+  await t.step("commit update to appversions.json and open PR", async () => {
+    await commitFileUpdateToBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      "appversions.json",
+      '{\n  "coreapp": "v0.1.0",\n  "subapp": "v1.2.0",\n  "logapp": "v100.1.0"\n}\n',
+    );
+
+    const { data: pullRequest } = await testCommitterOctokit.pulls.create({
+      owner: testOrg,
+      repo: repoName,
+      head: branchName,
+      base: defaultBranchName,
+      title:
+        "[automated-staging-test] Passed required rule can pass automerge check",
+    });
+    prNum = pullRequest.number;
+  });
+
+  await t.step("validate check passed from Fensak Staging", async () => {
+    const checkRun = await waitForFensakStagingCheck(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      previousCheckRuns,
+    );
+    previousCheckRuns.push(checkRun.id);
+    expectCheckConclusion(checkRun, "success");
+  });
+
+  await t.step("[cleanup] close PR", async () => {
+    if (prNum) {
+      await testCommitterOctokit.pulls.update({
+        owner: testOrg,
+        repo: repoName,
+        pull_number: prNum,
+        state: "closed",
+      });
+    }
+  });
+
+  await t.step("[cleanup] delete branch", async () => {
+    await deleteBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+});
+
+Deno.test("passed required rule and failed automerge requires review", async (t) => {
+  const repoName = "test-fensak-automated-appdeploy";
+  const branchName = `feature/update-config-${getRandomString(6)}`;
+  const defaultBranchName = "main";
+  const previousCheckRuns: number[] = [];
+  let prNum = 0;
+
+  await t.step("create branch", async () => {
+    await createBranchFromDefault(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+    );
+  });
+
+  await t.step("commit update to appversions.json and open PR", async () => {
+    await commitFileUpdateToBranch(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      "appversions.json",
+      '{\n  "coreapp": "v0.2.0",\n  "subapp": "v1.1.0",\n  "logapp": "v100.1.0"\n}',
+    );
+
+    const { data: pullRequest } = await testCommitterOctokit.pulls.create({
+      owner: testOrg,
+      repo: repoName,
+      head: branchName,
+      base: defaultBranchName,
+      title:
+        "[automated-staging-test] Passed required rule but failed automerge check requires reviews",
+    });
+    prNum = pullRequest.number;
+  });
+
+  await t.step("validate check failed from Fensak Staging", async () => {
+    const checkRun = await waitForFensakStagingCheck(
+      testCommitterOctokit,
+      testOrg,
+      repoName,
+      branchName,
+      previousCheckRuns,
+    );
+    previousCheckRuns.push(checkRun.id);
+    expectCheckConclusion(checkRun, "action_required");
+  });
+
+  await t.step(
+    "approve with trusted user and validate check still passes from Fensak Staging",
+    async () => {
+      await approvePR(
+        fensakOpsAdminOctokit,
+        testOrg,
+        repoName,
+        prNum,
+      );
+
+      const checkRun = await waitForFensakStagingCheck(
+        testCommitterOctokit,
+        testOrg,
+        repoName,
+        branchName,
+        previousCheckRuns,
+      );
+      previousCheckRuns.push(checkRun.id);
+      expectCheckConclusion(checkRun, "success");
     },
   );
 
@@ -354,4 +607,15 @@ async function approvePR(
     pull_number: prNum,
     event: "APPROVE",
   });
+}
+
+function expectCheckConclusion(
+  checkRun: GitHubCheckRun,
+  expectedConclusion: string,
+): void {
+  assertEquals(
+    checkRun.conclusion,
+    expectedConclusion,
+    `Unexpected check conclusion ${checkRun.conclusion}:\n${checkRun.output.title}\n${checkRun.output.summary}\n${checkRun.output.text}`,
+  );
 }

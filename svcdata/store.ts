@@ -167,7 +167,28 @@ export async function storeSubscription(
 export async function getSubscription(
   id: string,
 ): Promise<Deno.KvEntryMaybe<Subscription>> {
-  return await mainKV.get<Subscription>([TableNames.Subscription, id]);
+  const key = [TableNames.Subscription, id];
+  // deno-lint-ignore no-explicit-any
+  const obj = await mainKV.get<any>(key);
+
+  // TODO: figure out a better way to do this.
+  // Check and migrate to new repoCount field.
+  if (obj.value && Number.isInteger(obj.value.repoCount)) {
+    const updated = { ...obj.value };
+    updated.repoCount = {};
+    const ok = await mainKV.atomic()
+      .check(obj)
+      .set(key, updated)
+      .commit();
+    if (!ok) {
+      throw new Error(
+        `Transaction error while migrating subscription ${id} to new data format.`,
+      );
+    }
+  }
+
+  // At this point, we can be certain the object is in the right format.
+  return await mainKV.get<Subscription>(key);
 }
 
 /**
@@ -211,9 +232,27 @@ export async function deleteGitHubOrg(
   orgName: string,
   existingOrgRecord?: Deno.KvEntryMaybe<GitHubOrg>,
 ): Promise<void> {
-  let staged = mainKV.atomic();
-  if (existingOrgRecord) {
-    staged = staged.check(existingOrgRecord);
+  if (!existingOrgRecord) {
+    existingOrgRecord = await getGitHubOrgRecord(orgName);
+  }
+  if (!existingOrgRecord.value) {
+    // Do nothing since the org is already deleted.
+    return;
+  }
+
+  let staged = mainKV.atomic()
+    .check(existingOrgRecord);
+
+  // If there is a subscription associated, then we also need to null out the counter.
+  const maybeSubID = existingOrgRecord.value?.subscriptionID;
+  if (maybeSubID) {
+    const existingSubscription = await getSubscription(maybeSubID);
+    if (existingSubscription.value) {
+      const updatedSub = { ...existingSubscription.value };
+      delete updatedSub.repoCount[orgName];
+      staged = staged.check(existingSubscription)
+        .set([TableNames.Subscription, maybeSubID], updatedSub);
+    }
   }
 
   const ok = await staged
@@ -340,7 +379,8 @@ export async function storeComputedFensakConfig(
     );
   }
   const sub = { ...existingSub.value };
-  sub.repoCount += Object.keys(cfg.orgConfig.repos).length;
+  const orgRepoCount = Object.keys(cfg.orgConfig.repos).length;
+  sub.repoCount[orgName] = orgRepoCount;
   const { ok } = await mainKV.atomic()
     .check(existingSub)
     .set(existingSub.key, sub)

@@ -73,6 +73,28 @@ Deno.test("parseConfigFile single repo config", async () => {
   });
 });
 
+Deno.test("parseConfigFile accepts required rule file", async () => {
+  const fixtureFname = "valid-with-required-rule.json";
+  const contents = await Deno.readTextFile(
+    path.join(__dirname, "fixtures", fixtureFname),
+  );
+  const cfg = parseConfigFile(fixtureFname, contents);
+  assertEquals(cfg, {
+    repos: {
+      "test-fensak-rules-engine": {
+        ruleFile: "app_deploy_rule.ts",
+        ruleLang: reng.RuleFnSourceLang.Typescript,
+        requiredRuleFile: "source_branch_rule.ts",
+        requiredRuleLang: reng.RuleFnSourceLang.Typescript,
+        requiredApprovals: 2,
+        requiredApprovalsForTrustedUsers: 2,
+        requiredApprovalsForMachineUsers: 2,
+      },
+    },
+    machineUsers: [],
+  });
+});
+
 Deno.test("parseConfigFile multi repo config (different formats)", async (t) => {
   const names = [
     "valid-multiple-repo.json",

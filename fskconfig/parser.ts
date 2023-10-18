@@ -54,9 +54,38 @@ export function parseConfigFile(
   }
   const typedData: OrgConfig = data as OrgConfig;
 
+  // Further validation on the data that requires more logic than json schema.
+  for (const repoName in typedData.repos) {
+    const cfg = typedData.repos[repoName];
+    if (cfg.requiredRuleFile) {
+      // Skip since it makes sense to allow 0 for required reviews if required rules are configured
+      continue;
+    }
+
+    // Check to make sure the required reviews is greater than 0. If it is set to 0, then the check has no effect since
+    // it will always pass.
+    if (cfg.requiredApprovals == 0) {
+      throw new Error(
+        `requiredApprovals for repo ${repoName} must be greater than 0 when there are no required rules`,
+      );
+    }
+    if (cfg.requiredApprovalsForTrustedUsers == 0) {
+      throw new Error(
+        `requiredApprovalsForTrustedUsers for repo ${repoName} must be greater than 0 when there are no required rules`,
+      );
+    }
+    if (cfg.requiredApprovalsForMachineUsers == 0) {
+      throw new Error(
+        `requiredApprovalsForMachineUsers for repo ${repoName} must be greater than 0 when there are no required rules`,
+      );
+    }
+  }
+
   // Configure defaults:
   // - set the machineUsers top level key to empty array if unset.
-  // - set the repoLang based on the filename extension if any entry is missing it.
+  // - set the ruleLang based on the filename extension if any entry is missing it.
+  // - set the requiredRuleLang based on the filename extension if any entry is missing it and requiredRuleFile is
+  //   configured.
   // - set the requiredApprovals to 1 if it is unset.
   // - set the requiredApprovalsForMachineUsers and requiredApprovalsForTrustedUsers to requiredApprovals if it is
   //   unset.
@@ -65,17 +94,22 @@ export function parseConfigFile(
   }
   for (const repoName in typedData.repos) {
     const cfg = typedData.repos[repoName];
-    if (!cfg.ruleLang) {
+    if (cfg.ruleFile && !cfg.ruleLang) {
       typedData.repos[repoName].ruleLang = getRuleLang(cfg.ruleFile);
     }
-    if (!cfg.requiredApprovals) {
+    if (cfg.requiredRuleFile && !cfg.requiredRuleLang) {
+      typedData.repos[repoName].requiredRuleLang = getRuleLang(
+        cfg.requiredRuleFile,
+      );
+    }
+    if (cfg.requiredApprovals === undefined) {
       typedData.repos[repoName].requiredApprovals = 1;
     }
-    if (!cfg.requiredApprovalsForMachineUsers) {
+    if (cfg.requiredApprovalsForMachineUsers === undefined) {
       typedData.repos[repoName].requiredApprovalsForMachineUsers =
         typedData.repos[repoName].requiredApprovals;
     }
-    if (!cfg.requiredApprovalsForTrustedUsers) {
+    if (cfg.requiredApprovalsForTrustedUsers === undefined) {
       typedData.repos[repoName].requiredApprovalsForTrustedUsers =
         typedData.repos[repoName].requiredApprovals;
     }

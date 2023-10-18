@@ -1,0 +1,8 @@
+{
+  "repos": {
+    "test-fensak-rules-engine": {
+      "requiredRuleFile": "source_branch_rule.ts",
+      "requiredApprovals": 0
+    }
+  }
+}

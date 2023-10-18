@@ -347,7 +347,9 @@ function validateRepoLimits(
 
   let existingRepoCount = 0;
   for (const k in ghorg.subscription.repoCount) {
-    existingRepoCount += ghorg.subscription.repoCount[k];
+    if (k !== ghorg.name) {
+      existingRepoCount += ghorg.subscription.repoCount[k];
+    }
   }
   const totalRepoCount = configRepoCount + existingRepoCount;
   if (totalRepoCount > maybeLimit) {

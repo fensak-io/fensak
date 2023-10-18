@@ -152,10 +152,12 @@ async function runReviewRoutine(
   let requiredRuleFn: CompiledRuleSource | undefined;
   if (repoCfg.requiredRuleFile) {
     requiredRuleFn = cfg.ruleLookup[repoCfg.requiredRuleFile];
-    logger.warn(
-      `[${requestID}] Compiled required rule function could not be found for repository ${repoName}.`,
-    );
-    return false;
+    if (!requiredRuleFn) {
+      logger.warn(
+        `[${requestID}] Compiled required rule function could not be found for repository ${repoName}.`,
+      );
+      return false;
+    }
   }
 
   const authorType = await determineAuthorType(

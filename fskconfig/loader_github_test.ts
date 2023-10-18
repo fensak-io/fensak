@@ -24,7 +24,7 @@ Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async
     id: "sub_asdf",
     mainOrgName: "fensak-test",
     planName: "pro",
-    repoCount: 0,
+    repoCount: {},
     cancelledAt: 0,
   };
   const testOrg: GitHubOrgWithSubscription = {
@@ -96,7 +96,9 @@ Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
       id: "sub_asdf",
       mainOrgName: "fensak-test",
       planName: "pro",
-      repoCount: 5,
+      repoCount: {
+        "yanosan": 5,
+      },
       cancelledAt: 0,
     },
   };

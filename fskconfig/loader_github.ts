@@ -345,7 +345,11 @@ function validateRepoLimits(
     maybeLimit = planRepoLimits[""];
   }
 
-  const totalRepoCount = configRepoCount + ghorg.subscription.repoCount;
+  let existingRepoCount = 0;
+  for (const k in ghorg.subscription.repoCount) {
+    existingRepoCount += ghorg.subscription.repoCount[k];
+  }
+  const totalRepoCount = configRepoCount + existingRepoCount;
   if (totalRepoCount > maybeLimit) {
     throw new FensakConfigLoaderUserError(
       `the config file for \`${ghorg.name}\` exceeds or causes the org to exceed the repo limit for the org (limit is ${maybeLimit})`,

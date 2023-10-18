@@ -86,7 +86,7 @@ async function handleSubscriptionCreatedEvent(
     id: data.id,
     mainOrgName: data.mainOrgName,
     planName: data.planName,
-    repoCount: 0,
+    repoCount: {},
     cancelledAt: 0,
   };
   const stored = await storeSubscription(newSub, maybeSub);

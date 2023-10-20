@@ -537,8 +537,9 @@ Deno.test("passed required rule and failed automerge requires review", async (t)
 });
 
 /**
- * Wait for the Fensak Staging check to show up on the head commit of the given branch. This will timeout after 1
- * minute.
+ * Wait for the Fensak Staging check to show up on the head commit of the given branch. This will timeout after
+ * 3 minutes. 3 minutes feels very long, but unfortunately sometimes GitHub has significant delays in the webhooks so it
+ * makes sense to wait that long.
  */
 async function waitForFensakStagingCheck(
   octokit: Octokit,
@@ -548,7 +549,7 @@ async function waitForFensakStagingCheck(
   previousCheckRuns?: number[],
 ): Promise<GitHubCheckRun> {
   const maxRetries = 60;
-  const sleepBetweenRetries = 1000;
+  const sleepBetweenRetries = 3000;
 
   const headSHA = await getHeadSHA(octokit, owner, repoName, branchName);
   for (let i = 0; i < maxRetries; i++) {

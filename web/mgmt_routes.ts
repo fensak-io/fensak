@@ -10,13 +10,17 @@ import {
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
 import {
+  enqueueMsg,
   FensakConfigSource,
   getComputedFensakConfig,
   getSubscription,
+  MessageType,
   mustGetGitHubOrgWithSubscription,
+  waitForHealthCheckResult,
 } from "../svcdata/mod.ts";
 import type { GitHubOrgWithSubscription } from "../svcdata/mod.ts";
 import { isOrgManager } from "../ghstd/mod.ts";
+import { getRandomString } from "../xtd/mod.ts";
 
 interface APIOrganization {
   slug: string;
@@ -38,6 +42,8 @@ export function attachMgmtAPIRoutes(router: Router): void {
   const corsMW = oakCors({ origin: corsOrigins });
 
   router
+    .get("/healthz", healthCheck)
+    .get("/sentry-test", testSentry)
     .post(
       "/hooks/mgmt",
       middlewares.assertMgmtEvent,
@@ -57,6 +63,35 @@ export function attachMgmtAPIRoutes(router: Router): void {
       middlewares.assertMgmtAPIToken,
       handleGetOneOrganization,
     );
+}
+
+async function healthCheck(ctx: Context): Promise<void> {
+  const requestID = getRandomString(6);
+  await enqueueMsg({
+    type: MessageType.HealthCheck,
+    payload: {
+      requestID: requestID,
+    },
+  });
+  const result = await waitForHealthCheckResult(requestID);
+  if (!result) {
+    ctx.response.status = Status.InternalServerError;
+    ctx.response.body = {
+      status: Status.InternalServerError,
+      msg: "timed out waiting for worker health result",
+    };
+    return;
+  }
+
+  ctx.response.status = Status.OK;
+  ctx.response.body = {
+    status: Status.OK,
+    msg: "system ok",
+  };
+}
+
+function testSentry(_ctx: Context): void {
+  throw new Error("Test error to ensure sentry is working");
 }
 
 async function handleGetOrganizations(ctx: Context): Promise<void> {

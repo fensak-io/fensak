@@ -60,7 +60,16 @@
 
       // Basic authentication credentials to access the Loki instance.
       basicAuth: "",
-    }
+    },
+
+    // Settings/Secrets for configuring Sentry for error reporting.
+    sentry: {
+      // Whether Sentry for error reporting should be enabled.
+      enabled: false,
+
+      // The DSN for the project to report errors to.
+      dsn: "",
+    },
   },
 
   /**

@@ -26,7 +26,7 @@ export type {
 } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 export { oakCors } from "https://deno.land/x/cors@v1.2.1/mod.ts";
 
-export * as basemiddlewares from "https://raw.githubusercontent.com/fensak-io/denoxtd/v0.1.0/oakmiddlewares/mod.ts";
+export * as basemiddlewares from "https://raw.githubusercontent.com/fensak-io/denoxtd/v0.2.1/oakmiddlewares/mod.ts";
 
 import winston from "npm:winston@^3.10.0";
 import WinstonTransport from "npm:winston-transport@^4.5.0";

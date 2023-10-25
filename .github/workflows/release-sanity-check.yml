@@ -44,8 +44,7 @@ jobs:
       - name: integration test
         run: |
           deno test \
-            --unstable --allow-net --allow-env --allow-read \
-            --reporter=junit --junit-path=./report.xml \
+            --unstable --allow-net --allow-env --allow-read --junit-path=./report.xml \
             ./deployments/release/integration_test.ts
         env:
           FENSAK_TEST_COMMITTER_GITHUB_APP_PRIVATE_KEY: ${{ secrets.FENSAK_TEST_COMMITTER_GITHUB_APP_PRIVATE_KEY }}

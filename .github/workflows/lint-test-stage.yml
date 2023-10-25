@@ -40,7 +40,7 @@ jobs:
           deno test \
             --parallel --unstable --allow-net --allow-env --allow-read \
             --ignore=deployments/release \
-            --reporter=junit --junit-path=./report.xml
+            --junit-path=./report.xml
         env:
           FENSAK_GITHUB_WEBHOOK_SECRET: ${{ secrets.FENSAK_GITHUB_WEBHOOK_SECRET }}
           FENSAK_GITHUB_APP_ID: ${{ secrets.FENSAK_GITHUB_APP_ID }}

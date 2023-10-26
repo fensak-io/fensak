@@ -1,10 +1,9 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { crypto } from "../deps.ts";
+import { crypto, sleep } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
-import { sleep } from "../xtd/mod.ts";
 
 import { mainKV } from "./svc.ts";
 import {
@@ -55,7 +54,7 @@ export async function waitForHealthCheckResult(
           i + 1
         } of ${maxTries}). Retrying after sleep for ${sleepBetweenTries} seconds.`,
       );
-      await sleep(sleepBetweenTries * 1000);
+      await sleep.sleep(sleepBetweenTries * 1000);
     }
   }
 

@@ -1,7 +1,15 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config, Context, oakCors, Octokit, Router, Status } from "../deps.ts";
+import {
+  config,
+  Context,
+  oakCors,
+  Octokit,
+  random,
+  Router,
+  Status,
+} from "../deps.ts";
 import type { RouteParams, RouterContext } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
@@ -20,7 +28,6 @@ import {
 } from "../svcdata/mod.ts";
 import type { GitHubOrgWithSubscription } from "../svcdata/mod.ts";
 import { isOrgManager } from "../ghstd/mod.ts";
-import { getRandomString } from "../xtd/mod.ts";
 
 interface APIOrganization {
   slug: string;
@@ -66,7 +73,7 @@ export function attachMgmtAPIRoutes(router: Router): void {
 }
 
 async function healthCheck(ctx: Context): Promise<void> {
-  const requestID = getRandomString(6);
+  const requestID = random.getRandomString(6);
   await enqueueMsg({
     type: MessageType.HealthCheck,
     payload: {

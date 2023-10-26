@@ -15,6 +15,8 @@ import {
   GitHubComponents,
   Octokit,
   octokitCreateAppAuth,
+  random,
+  sleep,
 } from "../../deps.ts";
 
 import {
@@ -23,7 +25,6 @@ import {
   deleteBranch,
   getHeadSHA,
 } from "../../ghstd/mod.ts";
-import { getRandomString, sleep } from "../../xtd/mod.ts";
 
 /**
  * start global constants
@@ -105,7 +106,7 @@ const testCommitterOctokit = new Octokit({
 
 Deno.test("auto-approve happy path for README update", async (t) => {
   const repoName = "test-fensak-automated-readme-only";
-  const branchName = `test/update-readme-${getRandomString(6)}`;
+  const branchName = `test/update-readme-${random.getRandomString(6)}`;
   const defaultBranchName = "main";
   let prNum = 0;
 
@@ -171,7 +172,7 @@ Deno.test("auto-approve happy path for README update", async (t) => {
 
 Deno.test("manual review required for config update", async (t) => {
   const repoName = "test-fensak-automated-readme-only";
-  const branchName = `test/update-config-${getRandomString(6)}`;
+  const branchName = `test/update-config-${random.getRandomString(6)}`;
   const defaultBranchName = "main";
   const previousCheckRuns: number[] = [];
   let prNum = 0;
@@ -285,7 +286,7 @@ Deno.test("manual review required for config update", async (t) => {
 
 Deno.test("failed required rule fails check", async (t) => {
   const repoName = "test-fensak-automated-appdeploy";
-  const branchName = `test/update-config-${getRandomString(6)}`;
+  const branchName = `test/update-config-${random.getRandomString(6)}`;
   const defaultBranchName = "main";
   const previousCheckRuns: number[] = [];
   let prNum = 0;
@@ -376,7 +377,7 @@ Deno.test("failed required rule fails check", async (t) => {
 
 Deno.test("passed required rule and passed automerge passes check", async (t) => {
   const repoName = "test-fensak-automated-appdeploy";
-  const branchName = `feature/update-config-${getRandomString(6)}`;
+  const branchName = `feature/update-config-${random.getRandomString(6)}`;
   const defaultBranchName = "main";
   const previousCheckRuns: number[] = [];
   let prNum = 0;
@@ -446,7 +447,7 @@ Deno.test("passed required rule and passed automerge passes check", async (t) =>
 
 Deno.test("passed required rule and failed automerge requires review", async (t) => {
   const repoName = "test-fensak-automated-appdeploy";
-  const branchName = `feature/update-config-${getRandomString(6)}`;
+  const branchName = `feature/update-config-${random.getRandomString(6)}`;
   const defaultBranchName = "main";
   const previousCheckRuns: number[] = [];
   let prNum = 0;
@@ -585,7 +586,7 @@ async function waitForFensakStagingCheck(
     console.debug(
       `Fensak Staging check hasn't run yet on head commit on branch ${branchName} in ${owner}/${repoName}. Retrying after 1 second delay.`,
     );
-    await sleep(sleepBetweenRetries);
+    await sleep.sleep(sleepBetweenRetries);
   }
 
   throw new Error(

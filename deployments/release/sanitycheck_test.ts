@@ -9,10 +9,9 @@
  */
 
 import { assertEquals } from "../../test_deps.ts";
-import { Octokit, Status } from "../../deps.ts";
+import { Octokit, sleep, Status } from "../../deps.ts";
 
 import { getHeadSHA } from "../../ghstd/mod.ts";
-import { sleep } from "../../xtd/mod.ts";
 
 const fensakOrg = "fensak-io";
 const fensakRepo = "fensak";
@@ -83,7 +82,7 @@ async function waitForDenoDeploy(octokit: Octokit): Promise<void> {
     console.debug(
       `Deploy fensak-stage job hasn't run yet on head commit on branch ${fensakRepoDefaultBranch} in ${fensakOrg}/${fensakRepo}. Retrying after 1 second delay.`,
     );
-    await sleep(sleepBetweenRetries);
+    await sleep.sleep(sleepBetweenRetries);
   }
 
   throw new Error(

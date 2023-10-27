@@ -44,7 +44,7 @@ const allowedPullRequestEvents = [
 export async function handleGitHubEvent(
   msg: GitHubEventPayload,
 ): Promise<boolean> {
-  logger.info(`[${msg.requestID}] Processing ${msg.eventName} event`);
+  logger.info(`[${msg.requestID}] Processing github ${msg.eventName} event`);
 
   // IMPORTANT
   // If you add a new case condition here, add it to allowedEvents!
@@ -85,7 +85,7 @@ export async function handleGitHubEvent(
       break;
   }
 
-  logger.info(`[${msg.requestID}] Processed ${msg.eventName} event`);
+  logger.info(`[${msg.requestID}] Processed github ${msg.eventName} event`);
   return retry;
 }
 

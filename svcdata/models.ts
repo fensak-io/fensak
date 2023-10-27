@@ -23,6 +23,7 @@ export interface Lock {
  */
 export interface Subscription {
   id: string;
+  mainOrgSource?: "github" | "bitbucket";
   mainOrgName: string;
   planName: string;
   repoCount: Record<string, number>;
@@ -48,6 +49,38 @@ export interface GitHubOrgWithSubscription {
   name: string;
   installationID: number | null;
   subscription: Subscription | null;
+}
+
+/**
+ * Represents a BitBucket workspace that has installed Fensak.
+ * @property name The name (in slug form) of the BitBucket workspace.
+ * @property subscriptionID The associated subscription plan for the Workspace.
+ * @property securityContext The security context of the installed instance.
+ */
+export interface BitBucketWorkspace {
+  name: string;
+  subscriptionID: string | null;
+  securityContext: BitBucketSecurityContext;
+}
+
+/**
+ * Represents a BitBucketWorkspace with the Subscription info materialized.
+ */
+export interface BitBucketWorkspaceWithSubscription {
+  name: string;
+  subscription: Subscription | null;
+  securityContext: BitBucketSecurityContext;
+}
+
+/**
+ * Represents a BitBucket Security Context that is needed for authentication.
+ */
+export interface BitBucketSecurityContext {
+  key: string;
+  clientKey: string;
+  publicKey: string;
+  sharedSecret: string;
+  baseApiUrl: string;
 }
 
 /**

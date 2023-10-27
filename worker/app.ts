@@ -5,6 +5,7 @@ import { config, Sentry } from "../deps.ts";
 
 import { logger, lokiTransport } from "../logging/mod.ts";
 import { handleGitHubEvent } from "../ghevent/mod.ts";
+import { handleBitBucketEvent } from "../bbevent/mod.ts";
 import {
   enqueueMsg,
   listenQueue,
@@ -12,7 +13,11 @@ import {
   MessageType,
   storeHealthCheckResult,
 } from "../svcdata/mod.ts";
-import type { GitHubEventPayload, HealthCheckPayload } from "../svcdata/mod.ts";
+import type {
+  BitBucketEventPayload,
+  GitHubEventPayload,
+  HealthCheckPayload,
+} from "../svcdata/mod.ts";
 
 const retryDelay = 5 * 1000; // 5 seconds
 const lokiEnabled = config.get("logging.loki.enabled");
@@ -39,7 +44,9 @@ async function runHandler(msg: Message): Promise<void> {
   switch (msg.type) {
     case MessageType.Unknown:
       logger.info(
-        `Received unknown message: ${msg.payload}. Ignoring message.`,
+        `Received unknown message: ${
+          JSON.stringify(msg.payload)
+        }. Ignoring message.`,
       );
       return;
 
@@ -49,6 +56,10 @@ async function runHandler(msg: Message): Promise<void> {
 
     case MessageType.GitHubEvent:
       retry = await handleGitHubEvent(msg.payload as GitHubEventPayload);
+      break;
+
+    case MessageType.BitBucketEvent:
+      retry = await handleBitBucketEvent(msg.payload as BitBucketEventPayload);
       break;
   }
 

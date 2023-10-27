@@ -8,6 +8,8 @@ import { octokitFromOauthApp } from "../ghauth/mod.ts";
 import { verifyMgmtEvent } from "../mgmt/mod.ts";
 import { logger } from "../logging/mod.ts";
 
+import { returnUnauthorizedResp } from "./common_resps.ts";
+
 const githubOauthClientID = config.get("github.oauthApp.clientID");
 
 export enum APITokenSource {
@@ -84,14 +86,5 @@ function returnInvalidFskEventHook(ctx: Context): void {
   ctx.response.body = {
     status: respStatus,
     msg: "Could not verify fensak signature.",
-  };
-}
-
-function returnUnauthorizedResp(ctx: Context): void {
-  const respStatus = Status.Forbidden;
-  ctx.response.status = respStatus;
-  ctx.response.body = {
-    status: respStatus,
-    msg: "Unauthorized.",
   };
 }

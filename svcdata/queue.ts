@@ -14,6 +14,7 @@ export enum MessageType {
   Unknown = 0,
   HealthCheck = 1,
   GitHubEvent = 10,
+  BitBucketEvent = 20,
 }
 
 /**
@@ -37,11 +38,25 @@ export interface GitHubEventPayload {
 }
 
 /**
+ * A message payload that represents a BitBucket event sent through as a webhook message.
+ * @property requestID The webhook event request ID. This will be the delivery GUID.
+ * @property eventName The webhook event name as provided by BitBucket.
+ * @property payload The webhook event request payload as provided by BitBucket.
+ */
+export interface BitBucketEventPayload {
+  requestID: string;
+  eventName: string;
+
+  // deno-lint-ignore no-explicit-any
+  payload: any;
+}
+
+/**
  * A message that can be sent through the KV queue for processing by a task worker.
  */
 export interface Message {
   type: MessageType;
-  payload: GitHubEventPayload | HealthCheckPayload;
+  payload: GitHubEventPayload | BitBucketEventPayload | HealthCheckPayload;
 }
 
 /**
@@ -53,16 +68,10 @@ export function listenQueue(
 ): void {
   // deno-lint-ignore no-explicit-any
   mainKV.listenQueue(async (msg: any): Promise<void> => {
-    switch (msg.type) {
-      default:
-        throw new Error(`unknown message enqueued: ${msg}`);
-
-      case MessageType.Unknown:
-      case MessageType.HealthCheck:
-      case MessageType.GitHubEvent:
-        await handler(msg as Message);
-        break;
+    if (!Object.values(MessageType).includes(msg.type)) {
+      throw new Error(`unknown message enqueued: ${JSON.stringify(msg)}`);
     }
+    await handler(msg as Message);
   });
 }
 

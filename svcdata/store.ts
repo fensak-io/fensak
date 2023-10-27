@@ -20,6 +20,7 @@ enum TableNames {
   Subscription = "subscription",
   GitHubOrg = "github_org",
   BitBucketWorkspace = "bitbucket_workspace",
+  BitBucketWorkspaceNameByClientKey = "bitbucket_workspace_name_by_client_key",
   FensakConfig = "fensak_config",
   Lock = "lock",
 }
@@ -181,7 +182,7 @@ export async function getSubscription(
   if (obj.value && Number.isInteger(obj.value.repoCount)) {
     const updated = { ...obj.value };
     updated.repoCount = {};
-    const ok = await mainKV.atomic()
+    const { ok } = await mainKV.atomic()
       .check(obj)
       .set(key, updated)
       .commit();
@@ -260,7 +261,7 @@ export async function deleteGitHubOrg(
     }
   }
 
-  const ok = await staged
+  const { ok } = await staged
     .delete([TableNames.GitHubOrg, orgName])
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, orgName])
     .commit();
@@ -286,14 +287,14 @@ export async function removeInstallationForGitHubOrg(
   const org = { ...existingOrgRecord.value };
   org.installationID = null;
 
-  const ok = await mainKV.atomic()
+  const { ok } = await mainKV.atomic()
     .check(existingOrgRecord)
     .set([TableNames.GitHubOrg, org.name], org)
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, org.name])
     .commit();
   if (!ok) {
     throw new Error(
-      `Could not remove installation for org ${org.name}`,
+      `Could not remove installation for GitHub org ${org.name}`,
     );
   }
 }
@@ -361,16 +362,46 @@ export async function mustGetGitHubOrgWithSubscription(
 }
 
 /**
- * Retrieves the raw BitBucket workspace record from the KV store. This is useful for use with the
+ * Retrieves the raw BitBucket workspace record from the KV store by name. This is useful for use with the
  * existingWorkspaceRecord parameter in storeBitBucketWorkspace.
  */
 export async function getBitBucketWorkspace(
-  wsClientKey: string,
+  wsName: string,
 ): Promise<Deno.KvEntryMaybe<BitBucketWorkspace>> {
   return await mainKV.get<BitBucketWorkspace>([
     TableNames.BitBucketWorkspace,
+    wsName,
+  ]);
+}
+
+/**
+ * Retrieves the name of a BitBucket workspace that is associated with the given client key.
+ */
+export async function getBitBucketWorkspaceNameByClientKey(
+  wsClientKey: string,
+): Promise<Deno.KvEntryMaybe<string>> {
+  return await mainKV.get<string>([
+    TableNames.BitBucketWorkspaceNameByClientKey,
     wsClientKey,
   ]);
+}
+
+/**
+ * Retrieves the BitBucket workspace that is associated with the given client key. This will return both the secondary
+ * index name lookup record and the workspace record.
+ */
+export async function getBitBucketWorkspaceByClientKey(
+  wsClientKey: string,
+): Promise<
+  [Deno.KvEntryMaybe<string>, Deno.KvEntryMaybe<BitBucketWorkspace> | null]
+> {
+  const bbName = await getBitBucketWorkspaceNameByClientKey(wsClientKey);
+  if (!bbName.value) {
+    return [bbName, null];
+  }
+
+  const bbWS = await getBitBucketWorkspace(bbName.value);
+  return [bbName, bbWS];
 }
 
 /**
@@ -381,22 +412,76 @@ export async function getBitBucketWorkspace(
 export async function storeBitBucketWorkspace(
   workspace: BitBucketWorkspace,
   existingWorkspaceRecord?: Deno.KvEntryMaybe<BitBucketWorkspace>,
+  existingWorkspaceNameByClientKeyRecord?: Deno.KvEntryMaybe<string>,
 ): Promise<boolean> {
   const key = [
     TableNames.BitBucketWorkspace,
-    workspace.securityContext.clientKey,
+    workspace.name,
   ];
 
-  if (!existingWorkspaceRecord) {
-    await mainKV.set(key, workspace);
-    return true;
+  let staged = mainKV.atomic();
+
+  if (existingWorkspaceRecord) {
+    staged = staged.check(existingWorkspaceRecord);
+  }
+  if (existingWorkspaceNameByClientKeyRecord) {
+    staged = staged.check(existingWorkspaceNameByClientKeyRecord);
   }
 
-  const { ok } = await mainKV.atomic()
-    .check(existingWorkspaceRecord)
-    .set(key, workspace)
-    .commit();
+  staged = staged.set(key, workspace);
+  if (workspace.securityContext) {
+    const nameByClientKeyKey = [
+      TableNames.BitBucketWorkspaceNameByClientKey,
+      workspace.securityContext.clientKey,
+    ];
+    staged = staged.set(nameByClientKeyKey, workspace.name);
+  }
+
+  const { ok } = await staged.commit();
   return ok;
+}
+
+/**
+ * Removes the security context record on the BitBucket Workspace and also deletes all associated config data.
+ */
+export async function removeSecurityContextForBitBucketWorkspace(
+  existingWorkspaceRecord: Deno.KvEntryMaybe<BitBucketWorkspace>,
+): Promise<void> {
+  if (!existingWorkspaceRecord.value) {
+    throw new Error(
+      "removeSecurityContextForBitBucketWorkspace only works on records with a workspace value",
+    );
+  }
+  if (existingWorkspaceRecord.value.securityContext === null) {
+    // Do nothing since already removed.
+    return;
+  }
+
+  let staged = mainKV.atomic()
+    .check(existingWorkspaceRecord);
+
+  const existingClientKey =
+    existingWorkspaceRecord.value.securityContext.clientKey;
+  const existingIdx = await getBitBucketWorkspaceNameByClientKey(
+    existingClientKey,
+  );
+  if (existingIdx.value) {
+    staged = staged.check(existingIdx)
+      .delete(existingIdx.key);
+  }
+
+  const ws = { ...existingWorkspaceRecord.value };
+  ws.securityContext = null;
+
+  const { ok } = await staged
+    .set([TableNames.BitBucketWorkspace, ws.name], ws)
+    .delete([TableNames.FensakConfig, FensakConfigSource.BitBucket, ws.name])
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not remove installation for BitBucket workspace ${ws.name}`,
+    );
+  }
 }
 
 /**
@@ -432,7 +517,7 @@ export async function storeComputedFensakConfig(
     .commit();
   if (!ok) {
     throw new Error(
-      `Could not store fensak config and update subscription repo count for org ${orgName}`,
+      `Could not store fensak config and update subscription repo count for GitHub org ${orgName}`,
     );
   }
 }

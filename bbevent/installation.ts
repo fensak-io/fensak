@@ -5,12 +5,11 @@ import { logger } from "../logging/mod.ts";
 import {
   BitBucketWorkspace,
   getBitBucketWorkspace,
+  getBitBucketWorkspaceByClientKey,
+  removeSecurityContextForBitBucketWorkspace,
   storeBitBucketWorkspace,
 } from "../svcdata/mod.ts";
-import type {
-  BitBucketEventPayload,
-  BitBucketSecurityContext,
-} from "../svcdata/mod.ts";
+import type { BitBucketSecurityContext } from "../svcdata/mod.ts";
 
 /**
  * Processes an app installed event that comes in through BitBucket.
@@ -22,28 +21,39 @@ import type {
  */
 export async function appInstalled(
   requestID: string,
-  msg: BitBucketEventPayload,
+  // deno-lint-ignore no-explicit-any
+  payload: any,
 ): Promise<boolean> {
-  const clientKey = msg.payload.clientKey;
+  const name = payload.principal.username;
   const securityCtx: BitBucketSecurityContext = {
-    key: msg.payload.key,
-    clientKey: msg.payload.clientKey,
-    publicKey: msg.payload.publicKey,
-    sharedSecret: msg.payload.sharedSecret,
-    baseApiUrl: msg.payload.baseApiUrl,
-  };
-  const bbws: BitBucketWorkspace = {
-    name: msg.payload.principal.username,
-    subscriptionID: null,
-    securityContext: securityCtx,
+    key: payload.key,
+    clientKey: payload.clientKey,
+    publicKey: payload.publicKey,
+    sharedSecret: payload.sharedSecret,
+    baseApiUrl: payload.baseApiUrl,
   };
 
-  const maybeBBWS = await getBitBucketWorkspace(clientKey);
+  let bbws: BitBucketWorkspace;
+  let maybeBBWS = await getBitBucketWorkspace(name);
   if (maybeBBWS.value !== null) {
-    logger.info(
-      `[${requestID}] Ignoring bitbucket app installation event since already installed.`,
-    );
-    return false;
+    // Make sure the existing security context is removed if exists.
+    await removeSecurityContextForBitBucketWorkspace(maybeBBWS);
+
+    // Update the existing BBWS reference to avoid consistency errors.
+    maybeBBWS = await getBitBucketWorkspace(name);
+    // NOTE: This check is not necessary, but is useful to make the compiler happy
+    if (maybeBBWS.value === null) {
+      throw new Error("impossible condition");
+    }
+
+    bbws = { ...maybeBBWS.value };
+    bbws.securityContext = securityCtx;
+  } else {
+    bbws = {
+      name: payload.principal.username,
+      subscriptionID: null,
+      securityContext: securityCtx,
+    };
   }
 
   const ok = await storeBitBucketWorkspace(bbws, maybeBBWS);
@@ -54,5 +64,27 @@ export async function appInstalled(
     return true;
   }
 
+  return false;
+}
+
+/**
+ * Processes an app uninstalled event that comes in through BitBucket.
+ *
+ * @return A boolean indicating whether the operation needs to be retried.
+ */
+export async function appUninstalled(
+  requestID: string,
+  // deno-lint-ignore no-explicit-any
+  payload: any,
+): Promise<boolean> {
+  const clientKey = payload.clientKey;
+  const [_n, maybeBBWS] = await getBitBucketWorkspaceByClientKey(clientKey);
+  if (!maybeBBWS || !maybeBBWS.value) {
+    logger.debug(
+      `[${requestID}] Ignoring uninstall BitBucket app event: already uninstalled.`,
+    );
+    return false;
+  }
+  await removeSecurityContextForBitBucketWorkspace(maybeBBWS);
   return false;
 }

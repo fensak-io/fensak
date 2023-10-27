@@ -4,7 +4,7 @@
 import { logger } from "../logging/mod.ts";
 import type { BitBucketEventPayload } from "../svcdata/mod.ts";
 
-import { appInstalled } from "./installation.ts";
+import { appInstalled, appUninstalled } from "./installation.ts";
 
 /**
  * Handles the given BitBucket event.
@@ -25,7 +25,11 @@ export async function handleBitBucketEvent(
       return false;
 
     case "installed":
-      retry = await appInstalled(msg.requestID, msg);
+      retry = await appInstalled(msg.requestID, msg.payload);
+      break;
+
+    case "uninstalled":
+      retry = await appUninstalled(msg.requestID, msg.payload);
       break;
   }
 

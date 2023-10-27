@@ -60,7 +60,7 @@ export interface GitHubOrgWithSubscription {
 export interface BitBucketWorkspace {
   name: string;
   subscriptionID: string | null;
-  securityContext: BitBucketSecurityContext;
+  securityContext: BitBucketSecurityContext | null;
 }
 
 /**
@@ -69,7 +69,7 @@ export interface BitBucketWorkspace {
 export interface BitBucketWorkspaceWithSubscription {
   name: string;
   subscription: Subscription | null;
-  securityContext: BitBucketSecurityContext;
+  securityContext: BitBucketSecurityContext | null;
 }
 
 /**

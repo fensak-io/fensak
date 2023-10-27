@@ -20,7 +20,11 @@ export function attachRoutes(router: Router): void {
       handleBitBucketWebhooks,
     )
     .post("/hooks/bb/installed", handleBitBucketAppInstallation)
-    .post("/hooks/bb/uninstalled", handleBitBucketAppInstallation);
+    .post(
+      "/hooks/bb/uninstalled",
+      middlewares.assertBitBucketWebhook,
+      handleBitBucketAppInstallation,
+    );
 }
 
 async function handleGitHubWebhooks(ctx: Context): Promise<void> {

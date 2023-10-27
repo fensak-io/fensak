@@ -50,6 +50,12 @@ export function atlassianConnectJSON(ctx: Context): void {
       name: "Fensak",
       url: "https://fensak.io",
     },
+    links: {
+      homepage: "https://fensak.io",
+      source: "https://github.com/fensak-io/fensak",
+      documentation: "https://docs.fensak.io/docs/",
+      support: "https://github.com/orgs/fensak-io/discussions",
+    },
     baseUrl: appURL,
     authentication: {
       type: "jwt",

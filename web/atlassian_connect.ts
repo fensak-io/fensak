@@ -3,6 +3,8 @@
 
 import { config, Context, Status } from "../deps.ts";
 
+import { getBitBucketAppKey } from "../bbstd/mod.ts";
+
 const appEnv = config.get("env");
 const appURL = config.get("appURL");
 
@@ -11,19 +13,17 @@ const appURL = config.get("appURL");
  * Refer to https://developer.atlassian.com/cloud/bitbucket/app-descriptor/ for more information.
  */
 export function atlassianConnectJSON(ctx: Context): void {
-  let key = "fensak-app-test";
   let name = "Fensak App (Test)";
   switch (appEnv) {
     case "stage":
-      key = "fensak-app-stage";
       name = "Fensak App (Staging)";
       break;
 
     case "prod":
-      key = "fensak-app";
       name = "Fensak App";
       break;
   }
+  const key = getBitBucketAppKey();
 
   const eventsToSubscribe = [
     "pullrequest:approved",

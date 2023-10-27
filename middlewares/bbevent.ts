@@ -57,8 +57,10 @@ export const assertBitBucketWebhook: Middleware = async (
     true,
     ["sign", "verify"],
   );
+  // deno-lint-ignore no-explicit-any
+  let verifiedClaims: any;
   try {
-    await jwt.verify(bbjwt, key);
+    verifiedClaims = await jwt.verify(bbjwt, key);
   } catch (e) {
     logger.error(`Could not verify bitbucket jwt: ${e}`);
     returnUnauthorizedResp(ctx);
@@ -68,5 +70,6 @@ export const assertBitBucketWebhook: Middleware = async (
   // TODO: Validate QSH
 
   // At this point the JWT was validated, so continue with the request
+  ctx.state.bitbucket = { verifiedClaims };
   await next();
 };

@@ -11,6 +11,7 @@ export * as base64 from "https://deno.land/std@0.202.0/encoding/base64.ts";
 export * as path from "https://deno.land/std@0.202.0/path/mod.ts";
 export * as toml from "https://deno.land/std@0.202.0/toml/mod.ts";
 export * as yaml from "https://deno.land/std@0.202.0/yaml/mod.ts";
+export * as http from "https://deno.land/std@0.202.0/http/mod.ts";
 
 export {
   Application,

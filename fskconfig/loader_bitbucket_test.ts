@@ -9,34 +9,35 @@ import {
 } from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
-import { octokitRestTestClt } from "../ghauth/rest_test.ts";
+import { BitBucket } from "../bbstd/mod.ts";
 import type {
-  GitHubOrgWithSubscription,
+  BitBucketWorkspaceWithSubscription,
   Subscription,
 } from "../svcdata/mod.ts";
 
-import { fetchAndParseConfigFromDotFensak } from "./loader_github.ts";
+import { fetchAndParseConfigFromDotFensak } from "./loader_bitbucket.ts";
 
-const expectedHeadSHA = "196e30534c1263648b0f5d7c35360a23e963d662";
+const clt = new BitBucket();
+const expectedHeadSHA = "cd3721eddd345280f24979b34bd1ab1457b5a75d";
 
-Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async () => {
+Deno.test("BitBucket fetchAndParseConfigFromDotFensak for fensak-test example repo", async () => {
   const sub: Subscription = {
     id: "sub_asdf",
-    mainOrgSource: "github",
+    mainOrgSource: "bitbucket",
     mainOrgName: "fensak-test",
     planName: "pro",
     repoCount: {},
     cancelledAt: 0,
   };
-  const testOrg: GitHubOrgWithSubscription = {
+  const testWS: BitBucketWorkspaceWithSubscription = {
     name: "fensak-test",
-    installationID: 0,
     subscription: sub,
+    securityContext: null,
   };
 
   const cfg = await fetchAndParseConfigFromDotFensak(
-    octokitRestTestClt,
-    testOrg,
+    clt,
+    testWS,
     expectedHeadSHA,
   );
   assertExists(cfg);
@@ -60,9 +61,11 @@ Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async
       "test-fensak-automated-appdeploy": {
         ruleFile: "app_deploy_rule.ts",
         ruleLang: reng.RuleFnSourceLang.Typescript,
+        requiredRuleFile: "source_branch_rule.ts",
+        requiredRuleLang: reng.RuleFnSourceLang.Typescript,
         requiredApprovals: 1,
         requiredApprovalsForTrustedUsers: 1,
-        requiredApprovalsForMachineUsers: 2,
+        requiredApprovalsForMachineUsers: 1,
       },
     },
     machineUsers: [],
@@ -89,13 +92,13 @@ Deno.test("fetchAndParseConfigFromDotFensak for fensak-test example repo", async
   // add some basic testing for the compiled rule source
 });
 
-Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
-  const testOrg: GitHubOrgWithSubscription = {
+Deno.test("BitBucket fetchAndParseConfigFromDotFensak checks repo limits", async () => {
+  const testOrg: BitBucketWorkspaceWithSubscription = {
     name: "fensak-test",
-    installationID: 0,
+    securityContext: null,
     subscription: {
       id: "sub_asdf",
-      mainOrgSource: "github",
+      mainOrgSource: "bitbucket",
       mainOrgName: "fensak-test",
       planName: "pro",
       repoCount: {
@@ -108,7 +111,7 @@ Deno.test("fetchAndParseConfigFromDotFensak checks repo limits", async () => {
   await assertRejects(
     () =>
       fetchAndParseConfigFromDotFensak(
-        octokitRestTestClt,
+        clt,
         testOrg,
         expectedHeadSHA,
       ),

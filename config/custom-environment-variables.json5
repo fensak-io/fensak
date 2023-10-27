@@ -4,6 +4,7 @@
 
 {
   env: "FENSAK_ENV",
+  appURL: "FENSAK_APP_URL",
   configFileSizeLimit: {
     __name: "FENSAK_CONFIG_FILE_SIZE_LIMIT",
     __format: "number",

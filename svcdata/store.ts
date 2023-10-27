@@ -7,6 +7,7 @@ import { logger } from "../logging/mod.ts";
 
 import { mainKV } from "./svc.ts";
 import {
+  BitBucketWorkspace,
   ComputedFensakConfig,
   GitHubOrg,
   GitHubOrgWithSubscription,
@@ -18,12 +19,14 @@ enum TableNames {
   HealthCheck = "healthcheck",
   Subscription = "subscription",
   GitHubOrg = "github_org",
+  BitBucketWorkspace = "bitbucket_workspace",
   FensakConfig = "fensak_config",
   Lock = "lock",
 }
 
 export enum FensakConfigSource {
   GitHub = "github",
+  BitBucket = "bitbucket",
 }
 
 /**
@@ -139,6 +142,9 @@ export async function storeSubscription(
   } else {
     staged = mainKV.atomic().set(key, subscription);
   }
+
+  // TODO
+  // Handle bitbucket
 
   const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
   const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
@@ -352,6 +358,45 @@ export async function mustGetGitHubOrgWithSubscription(
   }
 
   return out;
+}
+
+/**
+ * Retrieves the raw BitBucket workspace record from the KV store. This is useful for use with the
+ * existingWorkspaceRecord parameter in storeBitBucketWorkspace.
+ */
+export async function getBitBucketWorkspace(
+  wsClientKey: string,
+): Promise<Deno.KvEntryMaybe<BitBucketWorkspace>> {
+  return await mainKV.get<BitBucketWorkspace>([
+    TableNames.BitBucketWorkspace,
+    wsClientKey,
+  ]);
+}
+
+/**
+ * Stores the BitBucket workspace record into the KV store.
+ * If existingWorkspaceRecord is provided, this will do an atomic check to make sure the state hasn't changed.
+ * @returns Whether the record was successfully stored.
+ */
+export async function storeBitBucketWorkspace(
+  workspace: BitBucketWorkspace,
+  existingWorkspaceRecord?: Deno.KvEntryMaybe<BitBucketWorkspace>,
+): Promise<boolean> {
+  const key = [
+    TableNames.BitBucketWorkspace,
+    workspace.securityContext.clientKey,
+  ];
+
+  if (!existingWorkspaceRecord) {
+    await mainKV.set(key, workspace);
+    return true;
+  }
+
+  const { ok } = await mainKV.atomic()
+    .check(existingWorkspaceRecord)
+    .set(key, workspace)
+    .commit();
+  return ok;
 }
 
 /**

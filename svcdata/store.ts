@@ -8,6 +8,7 @@ import { logger } from "../logging/mod.ts";
 import { mainKV } from "./svc.ts";
 import {
   BitBucketWorkspace,
+  BitBucketWorkspaceWithSubscription,
   ComputedFensakConfig,
   GitHubOrg,
   GitHubOrgWithSubscription,
@@ -402,6 +403,49 @@ export async function getBitBucketWorkspaceByClientKey(
 
   const bbWS = await getBitBucketWorkspace(bbName.value);
   return [bbName, bbWS];
+}
+
+/**
+ * Retrieves the BitBucket workspace with the subscription data from the KV store. This will throw an error if there is
+ * no record of the corresponding organization.
+ *
+ * Note that this will also update the bitbucket workspace if it has a subscriptionID associated with it and the
+ * subscription doesn't exist.
+ */
+export async function mustGetBitBucketWorkspaceWithSubscription(
+  name: string,
+): Promise<BitBucketWorkspaceWithSubscription> {
+  const entry = await mainKV.get<BitBucketWorkspace>([
+    TableNames.BitBucketWorkspace,
+    name,
+  ]);
+  if (!entry.value) {
+    throw new Error(`no record found for BitBucket workspace ${name}`);
+  }
+
+  const out: BitBucketWorkspaceWithSubscription = {
+    name: entry.value.name,
+    securityContext: entry.value.securityContext,
+    subscription: null,
+  };
+  if (entry.value.subscriptionID) {
+    const sub = await getSubscription(entry.value.subscriptionID);
+    if (!sub.value) {
+      // Subscription doesn't exist, so update BitBucket workspace to remove that link.
+      const ws = { ...entry.value };
+      ws.subscriptionID = null;
+      const ok = await storeBitBucketWorkspace(ws, entry);
+      if (!ok) {
+        throw new Error(
+          `could not update outdated subscription info for BitBucket Workspace ${name}`,
+        );
+      }
+    } else {
+      out.subscription = sub.value;
+    }
+  }
+
+  return out;
 }
 
 /**

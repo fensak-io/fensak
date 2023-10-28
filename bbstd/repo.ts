@@ -4,6 +4,19 @@
 import { BitBucket } from "./client.ts";
 
 /**
+ * Returns the default branch of the given repo.
+ */
+export async function getDefaultBranch(
+  clt: BitBucket,
+  owner: string,
+  repoName: string,
+): Promise<string> {
+  const resp = await clt.apiCall(`/2.0/repositories/${owner}/${repoName}`);
+  const data = await resp.json();
+  return data.mainbranch.name;
+}
+
+/**
  * Returns the git head commit SHA of the default branch of the given repo.
  */
 export async function getDefaultHeadSHA(
@@ -11,9 +24,7 @@ export async function getDefaultHeadSHA(
   owner: string,
   repoName: string,
 ): Promise<string> {
-  const resp = await clt.apiCall(`/2.0/repositories/${owner}/${repoName}`);
-  const data = await resp.json();
-  const defaultBranch = data.mainbranch.name;
+  const defaultBranch = await getDefaultBranch(clt, owner, repoName);
   return await getHeadSHA(clt, owner, repoName, defaultBranch);
 }
 

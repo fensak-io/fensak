@@ -5,6 +5,5 @@
  * bbstd
  * Contains common utility functions for interacting with BitBucket.
  */
-export * from "./auth.ts";
 export * from "./client.ts";
 export * from "./repo.ts";

@@ -7,6 +7,7 @@ import { logger } from "../logging/mod.ts";
 import * as middlewares from "../middlewares/mod.ts";
 import { enqueueMsg, MessageType } from "../svcdata/mod.ts";
 import { fastRejectEvent } from "../ghevent/mod.ts";
+import { fastRejectEvent as fastRejectBitBucketEvent } from "../bbevent/mod.ts";
 
 import { atlassianConnectJSON } from "./atlassian_connect.ts";
 
@@ -51,7 +52,9 @@ async function handleGitHubWebhooks(ctx: Context): Promise<void> {
   const body = ctx.request.body({ type: "json" });
   const payload = await body.value;
   if (fastRejectEvent(eventName, payload)) {
-    logger.debug(`[${ghEventID}] Rejecting event because of fast filter`);
+    logger.debug(
+      `[${ghEventID}] Rejecting github event because of fast filter`,
+    );
     ctx.response.status = Status.NoContent;
     return;
   }
@@ -92,13 +95,22 @@ async function handleBitBucketWebhooks(ctx: Context): Promise<void> {
 
   const body = ctx.request.body({ type: "json" });
   const payload = await body.value;
+  const data = payload.data;
+
+  if (fastRejectBitBucketEvent(bbEventName, data)) {
+    logger.debug(
+      `[${bbEventID}] Rejecting bitbucket event because of fast filter`,
+    );
+    ctx.response.status = Status.NoContent;
+    return;
+  }
 
   await enqueueMsg({
     type: MessageType.BitBucketEvent,
     payload: {
       requestID: bbEventID,
       eventName: bbEventName,
-      payload: payload,
+      payload: data,
       // comes from assertBitBucketWebhook middleware
       verifiedClaims: ctx.state.bitbucket.verifiedClaims,
     },

@@ -30,8 +30,8 @@
   <a href="https://github.com/fensak-io/fensak/releases/latest">
     <img alt="latest release" src="https://img.shields.io/github/v/release/fensak-io/fensak?style=for-the-badge">
   </a>
-  <a href="https://github.com/fensak-io/fensak/actions/workflows/lint-test.yml?query=branch%3Amain">
-    <img alt="main branch CI" src="https://img.shields.io/github/actions/workflow/status/fensak-io/fensak/lint-test.yml?branch=main&logo=github&label=CI&style=for-the-badge">
+  <a href="https://github.com/fensak-io/fensak/actions/workflows/lint-test-stage.yml?query=branch%3Amain">
+    <img alt="main branch CI" src="https://img.shields.io/github/actions/workflow/status/fensak-io/fensak/lint-test-stage.yml?branch=main&logo=github&label=CI&style=for-the-badge">
   </a>
   <a href="https://github.com/fensak-io/fensak/blob/main/LICENSE">
     <img alt="LICENSE" src="https://img.shields.io/badge/LICENSE-AGPL_3.0_OR_BUSL_1.1-orange?style=for-the-badge">

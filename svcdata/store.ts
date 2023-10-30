@@ -7,6 +7,8 @@ import { logger } from "../logging/mod.ts";
 
 import { mainKV } from "./svc.ts";
 import {
+  BitBucketWorkspace,
+  BitBucketWorkspaceWithSubscription,
   ComputedFensakConfig,
   GitHubOrg,
   GitHubOrgWithSubscription,
@@ -18,12 +20,15 @@ enum TableNames {
   HealthCheck = "healthcheck",
   Subscription = "subscription",
   GitHubOrg = "github_org",
+  BitBucketWorkspace = "bitbucket_workspace",
+  BitBucketWorkspaceNameByClientKey = "bitbucket_workspace_name_by_client_key",
   FensakConfig = "fensak_config",
   Lock = "lock",
 }
 
 export enum FensakConfigSource {
   GitHub = "github",
+  BitBucket = "bitbucket",
 }
 
 /**
@@ -140,6 +145,9 @@ export async function storeSubscription(
     staged = mainKV.atomic().set(key, subscription);
   }
 
+  // TODO
+  // Handle bitbucket
+
   const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
   const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
   staged = staged.check(existingOrg);
@@ -175,7 +183,7 @@ export async function getSubscription(
   if (obj.value && Number.isInteger(obj.value.repoCount)) {
     const updated = { ...obj.value };
     updated.repoCount = {};
-    const ok = await mainKV.atomic()
+    const { ok } = await mainKV.atomic()
       .check(obj)
       .set(key, updated)
       .commit();
@@ -254,7 +262,7 @@ export async function deleteGitHubOrg(
     }
   }
 
-  const ok = await staged
+  const { ok } = await staged
     .delete([TableNames.GitHubOrg, orgName])
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, orgName])
     .commit();
@@ -280,14 +288,14 @@ export async function removeInstallationForGitHubOrg(
   const org = { ...existingOrgRecord.value };
   org.installationID = null;
 
-  const ok = await mainKV.atomic()
+  const { ok } = await mainKV.atomic()
     .check(existingOrgRecord)
     .set([TableNames.GitHubOrg, org.name], org)
     .delete([TableNames.FensakConfig, FensakConfigSource.GitHub, org.name])
     .commit();
   if (!ok) {
     throw new Error(
-      `Could not remove installation for org ${org.name}`,
+      `Could not remove installation for GitHub org ${org.name}`,
     );
   }
 }
@@ -355,6 +363,172 @@ export async function mustGetGitHubOrgWithSubscription(
 }
 
 /**
+ * Retrieves the raw BitBucket workspace record from the KV store by name. This is useful for use with the
+ * existingWorkspaceRecord parameter in storeBitBucketWorkspace.
+ */
+export async function getBitBucketWorkspace(
+  wsName: string,
+): Promise<Deno.KvEntryMaybe<BitBucketWorkspace>> {
+  return await mainKV.get<BitBucketWorkspace>([
+    TableNames.BitBucketWorkspace,
+    wsName,
+  ]);
+}
+
+/**
+ * Retrieves the name of a BitBucket workspace that is associated with the given client key.
+ */
+export async function getBitBucketWorkspaceNameByClientKey(
+  wsClientKey: string,
+): Promise<Deno.KvEntryMaybe<string>> {
+  return await mainKV.get<string>([
+    TableNames.BitBucketWorkspaceNameByClientKey,
+    wsClientKey,
+  ]);
+}
+
+/**
+ * Retrieves the BitBucket workspace that is associated with the given client key. This will return both the secondary
+ * index name lookup record and the workspace record.
+ */
+export async function getBitBucketWorkspaceByClientKey(
+  wsClientKey: string,
+): Promise<
+  [Deno.KvEntryMaybe<string>, Deno.KvEntryMaybe<BitBucketWorkspace> | null]
+> {
+  const bbName = await getBitBucketWorkspaceNameByClientKey(wsClientKey);
+  if (!bbName.value) {
+    return [bbName, null];
+  }
+
+  const bbWS = await getBitBucketWorkspace(bbName.value);
+  return [bbName, bbWS];
+}
+
+/**
+ * Retrieves the BitBucket workspace with the subscription data from the KV store. This will throw an error if there is
+ * no record of the corresponding organization.
+ *
+ * Note that this will also update the bitbucket workspace if it has a subscriptionID associated with it and the
+ * subscription doesn't exist.
+ */
+export async function mustGetBitBucketWorkspaceWithSubscription(
+  name: string,
+): Promise<BitBucketWorkspaceWithSubscription> {
+  const entry = await mainKV.get<BitBucketWorkspace>([
+    TableNames.BitBucketWorkspace,
+    name,
+  ]);
+  if (!entry.value) {
+    throw new Error(`no record found for BitBucket workspace ${name}`);
+  }
+
+  const out: BitBucketWorkspaceWithSubscription = {
+    name: entry.value.name,
+    securityContext: entry.value.securityContext,
+    subscription: null,
+  };
+  if (entry.value.subscriptionID) {
+    const sub = await getSubscription(entry.value.subscriptionID);
+    if (!sub.value) {
+      // Subscription doesn't exist, so update BitBucket workspace to remove that link.
+      const ws = { ...entry.value };
+      ws.subscriptionID = null;
+      const ok = await storeBitBucketWorkspace(ws, entry);
+      if (!ok) {
+        throw new Error(
+          `could not update outdated subscription info for BitBucket Workspace ${name}`,
+        );
+      }
+    } else {
+      out.subscription = sub.value;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Stores the BitBucket workspace record into the KV store.
+ * If existingWorkspaceRecord is provided, this will do an atomic check to make sure the state hasn't changed.
+ * @returns Whether the record was successfully stored.
+ */
+export async function storeBitBucketWorkspace(
+  workspace: BitBucketWorkspace,
+  existingWorkspaceRecord?: Deno.KvEntryMaybe<BitBucketWorkspace>,
+  existingWorkspaceNameByClientKeyRecord?: Deno.KvEntryMaybe<string>,
+): Promise<boolean> {
+  const key = [
+    TableNames.BitBucketWorkspace,
+    workspace.name,
+  ];
+
+  let staged = mainKV.atomic();
+
+  if (existingWorkspaceRecord) {
+    staged = staged.check(existingWorkspaceRecord);
+  }
+  if (existingWorkspaceNameByClientKeyRecord) {
+    staged = staged.check(existingWorkspaceNameByClientKeyRecord);
+  }
+
+  staged = staged.set(key, workspace);
+  if (workspace.securityContext) {
+    const nameByClientKeyKey = [
+      TableNames.BitBucketWorkspaceNameByClientKey,
+      workspace.securityContext.clientKey,
+    ];
+    staged = staged.set(nameByClientKeyKey, workspace.name);
+  }
+
+  const { ok } = await staged.commit();
+  return ok;
+}
+
+/**
+ * Removes the security context record on the BitBucket Workspace and also deletes all associated config data.
+ */
+export async function removeSecurityContextForBitBucketWorkspace(
+  existingWorkspaceRecord: Deno.KvEntryMaybe<BitBucketWorkspace>,
+): Promise<void> {
+  if (!existingWorkspaceRecord.value) {
+    throw new Error(
+      "removeSecurityContextForBitBucketWorkspace only works on records with a workspace value",
+    );
+  }
+  if (existingWorkspaceRecord.value.securityContext === null) {
+    // Do nothing since already removed.
+    return;
+  }
+
+  let staged = mainKV.atomic()
+    .check(existingWorkspaceRecord);
+
+  const existingClientKey =
+    existingWorkspaceRecord.value.securityContext.clientKey;
+  const existingIdx = await getBitBucketWorkspaceNameByClientKey(
+    existingClientKey,
+  );
+  if (existingIdx.value) {
+    staged = staged.check(existingIdx)
+      .delete(existingIdx.key);
+  }
+
+  const ws = { ...existingWorkspaceRecord.value };
+  ws.securityContext = null;
+
+  const { ok } = await staged
+    .set([TableNames.BitBucketWorkspace, ws.name], ws)
+    .delete([TableNames.FensakConfig, FensakConfigSource.BitBucket, ws.name])
+    .commit();
+  if (!ok) {
+    throw new Error(
+      `Could not remove installation for BitBucket workspace ${ws.name}`,
+    );
+  }
+}
+
+/**
  * Stores the computed fensak configuration for the given org. If a subscriptionID is passed in, then this will
  * atomically increment the repo count on the associated subscription object.
  */
@@ -387,7 +561,7 @@ export async function storeComputedFensakConfig(
     .commit();
   if (!ok) {
     throw new Error(
-      `Could not store fensak config and update subscription repo count for org ${orgName}`,
+      `Could not store fensak config and update subscription repo count for GitHub org ${orgName}`,
     );
   }
 }

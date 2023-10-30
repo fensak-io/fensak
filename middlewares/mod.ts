@@ -6,5 +6,6 @@
  * Contains middlewares used by the web server.
  */
 export * from "./ghevent.ts";
+export * from "./bbevent.ts";
 export * from "./mgmt.ts";
 export * from "./sentry.ts";

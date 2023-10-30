@@ -1,18 +1,14 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { base64, config, Octokit, reng } from "../deps.ts";
+import { config, reng } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
 import { fensakCfgRepoName } from "../constants/mod.ts";
-import {
-  completeLoadFensakCfgCheck,
-  getDefaultHeadSHA,
-  initializeLoadFensakCfgCheck,
-} from "../ghstd/mod.ts";
+import { getDefaultHeadSHA, getListOfFiles } from "../bbstd/mod.ts";
 import type {
+  BitBucketWorkspaceWithSubscription,
   ComputedFensakConfig,
-  GitHubOrgWithSubscription,
   OrgConfig,
   RuleLookup,
 } from "../svcdata/mod.ts";
@@ -27,112 +23,92 @@ import {
 import { FensakConfigLoaderUserError } from "./errors.ts";
 import { getRuleLang, parseConfigFile } from "./parser.ts";
 import { getConfigFinfo, validateRepoLimits } from "./loader_common.ts";
-import type { IGitFileInfo, ITreeFile } from "./loader_common.ts";
+import type { ITreeFile } from "./loader_common.ts";
 
 const cfgFetchLockExpiry = 600 * 1000; // 10 minutes
 const configFileSizeLimit = config.get("configFileSizeLimit");
 const rulesFileSizeLimit = config.get("rulesFileSizeLimit");
 
 /**
- * Loads a Fensak configuration from GitHub with caching. This will first look in the KV cache, and if it is available
+ * Loads a Fensak configuration from BitBucket with caching. This will first look in the KV cache, and if it is available
  * and current, return that. Otherwise, this looks up the configuration from the repository `.fensak` in the
- * organization.
- * Note that only one active thread will fetch the config directly from GitHub to avoid hitting API rate limits.
+ * workspace.
+ * Note that only one active thread will fetch the config directly from BitBucket to avoid hitting API rate limits.
  *
- * @param clt An authenticated Octokit instance.
- * @param ghorg The GitHub org to load the config for, with the associated subscription marshalled.
- * @return The computed Fensak config for the GitHub org. Returns null if another thread is fetching the config.
+ * @param clt An authenticated BitBucket instance.
+ * @param ws The BitBucket workspace to load the config for, with the associated subscription marshalled.
+ * @return The computed Fensak config for the BitBucket Workspace. Returns null if another thread is fetching the config.
  */
-export async function loadConfigFromGitHub(
-  clt: Octokit,
-  ghorg: GitHubOrgWithSubscription,
+export async function loadConfigFromBitBucket(
+  clt: reng.BitBucket,
+  ws: BitBucketWorkspaceWithSubscription,
 ): Promise<ComputedFensakConfig | null> {
-  const headSHA = await getDefaultHeadSHA(clt, ghorg.name, fensakCfgRepoName);
+  const headSHA = await getDefaultHeadSHA(clt, ws.name, fensakCfgRepoName);
 
   // Check the cache to see if we already have a computed version for this SHA, and if so, return it.
   const maybeCfg = await getComputedFensakConfig(
-    FensakConfigSource.GitHub,
-    ghorg.name,
+    FensakConfigSource.BitBucket,
+    ws.name,
   );
   if (maybeCfg && maybeCfg.gitSHA === headSHA) {
     return maybeCfg;
   }
 
-  // Implement locking to ensure only one thread fetches from GitHub directly.
-  const lockKey = `fetch-from-github-${ghorg.name}`;
+  // Implement locking to ensure only one thread fetches from BitBucket directly.
+  const lockKey = `fetch-from-bitbucket-${ws.name}`;
   const lock = await acquireLock(lockKey, cfgFetchLockExpiry);
   if (!lock) {
     return null;
   }
 
-  logger.info(`Fetching configuration from GitHub for ${ghorg.name}`);
-  let checkID;
+  logger.info(`Fetching configuration from BitBucket for ${ws.name}`);
+
+  // TODO
+  // Implement status checks
   try {
-    checkID = await initializeLoadFensakCfgCheck(clt, ghorg.name, headSHA);
     const cfg = await fetchAndParseConfigFromDotFensak(
       clt,
-      ghorg,
+      ws,
       headSHA,
     );
     await storeComputedFensakConfig(
-      FensakConfigSource.GitHub,
-      ghorg.name,
+      FensakConfigSource.BitBucket,
+      ws.name,
       cfg,
-      ghorg.subscription?.id,
+      ws.subscription?.id,
     );
-    await completeLoadFensakCfgCheck(clt, ghorg.name, checkID, null);
     return cfg;
-  } catch (e) {
-    // Attempt to report the error to the user by reporting it on the GitHub check.
-    try {
-      if (!checkID) {
-        // Ignore
-      } else if (e instanceof FensakConfigLoaderUserError) {
-        await completeLoadFensakCfgCheck(
-          clt,
-          ghorg.name,
-          checkID,
-          e.toString(),
-        );
-      } else {
-        await completeLoadFensakCfgCheck(
-          clt,
-          ghorg.name,
-          checkID,
-          `Something went wrong while processing your Fensak configuration. We track errors automatically, but if it persists, please reach out to support@fensak.io`,
-        );
-      }
-    } catch (repE) {
-      logger.error(
-        `error while reporting config load error for ${ghorg.name}: ${repE}`,
-      );
-    }
-
-    throw e;
   } finally {
     await releaseLock(lock);
   }
 }
 
 export async function fetchAndParseConfigFromDotFensak(
-  clt: Octokit,
-  ghorg: GitHubOrgWithSubscription,
+  clt: reng.BitBucket,
+  ws: BitBucketWorkspaceWithSubscription,
   headSHA: string,
 ): Promise<ComputedFensakConfig> {
-  const fileLookup = await getFileLookup(clt, ghorg.name, headSHA);
+  const fileLookup = await getFileLookup(clt, ws.name, headSHA);
   const cfgFinfo = getConfigFinfo(fileLookup);
   if (!cfgFinfo) {
     throw new FensakConfigLoaderUserError(
-      `could not find fensak config file in repo \`${ghorg.name}/.fensak\``,
+      `could not find fensak config file in repo \`${ws.name}/.fensak\``,
     );
   }
   if (cfgFinfo.size > configFileSizeLimit) {
     throw new FensakConfigLoaderUserError(
-      `the config file \`${cfgFinfo.filename}\` in repo \`${ghorg.name}/.fensak\` is too large (limit 1MB)`,
+      `the config file \`${cfgFinfo.filename}\` in repo \`${ws.name}/.fensak\` is too large (limit 1MB)`,
+    );
+  }
+  if (!cfgFinfo.url) {
+    throw new Error(
+      `could not get URL to the config file \`${cfgFinfo.filename}\` in BitBucket repo \`${ws.name}/.fensak\``,
     );
   }
 
-  const orgCfgContents = await loadFileContents(clt, ghorg.name, cfgFinfo);
+  const resp = await clt.directAPICall(cfgFinfo.url);
+  const orgCfgContents = await resp.text();
+
   let orgCfg;
   try {
     orgCfg = parseConfigFile(cfgFinfo.filename, orgCfgContents);
@@ -143,17 +119,12 @@ export async function fetchAndParseConfigFromDotFensak(
     );
   }
 
-  validateRepoLimits(
-    ghorg,
-    Object.keys(orgCfg.repos).length,
-  );
+  validateRepoLimits(ws, Object.keys(orgCfg.repos).length);
 
   const ruleLookup = await loadRuleFiles(
     clt,
-    ghorg.name,
     orgCfg,
     fileLookup,
-    headSHA,
   );
 
   return {
@@ -167,65 +138,30 @@ export async function fetchAndParseConfigFromDotFensak(
  * Create a lookup table that maps file paths in a repository tree to the file metadata.
  */
 async function getFileLookup(
-  clt: Octokit,
+  clt: reng.BitBucket,
   owner: string,
   sha: string,
 ): Promise<Record<string, ITreeFile>> {
-  const { data: tree } = await clt.git.getTree({
-    owner: owner,
-    repo: fensakCfgRepoName,
-    tree_sha: sha,
-    recursive: "true",
-  });
+  const files = await getListOfFiles(clt, owner, fensakCfgRepoName, sha);
   const out: Record<string, ITreeFile> = {};
-  for (const f of tree.tree) {
-    if (!f.path || !f.sha || !f.size) {
-      continue;
-    }
+  for (const f of files) {
     out[f.path] = {
       path: f.path,
-      sha: f.sha,
+      sha: f.commit.hash,
       size: f.size,
-      mode: f.mode,
-      type: f.type,
-      url: f.url,
+      url: f.links.self.href,
     };
   }
   return out;
 }
 
 /**
- * Load the contents of the given file in the `.fensak` repository.
- */
-async function loadFileContents(
-  clt: Octokit,
-  owner: string,
-  finfo: IGitFileInfo,
-): Promise<string> {
-  const { data: file } = await clt.git.getBlob({
-    owner: owner,
-    repo: fensakCfgRepoName,
-    file_sha: finfo.gitSHA,
-  });
-
-  if (file.encoding !== "base64") {
-    throw new Error(
-      `unknown encoding from github blob when retrieving ${finfo.filename}: ${file.encoding}`,
-    );
-  }
-  const contentsBytes = base64.decode(file.content);
-  return new TextDecoder().decode(contentsBytes);
-}
-
-/**
  * Load the referenced rule files in the org config from the `.fensak` repository so that they can be cached.
  */
 async function loadRuleFiles(
-  clt: Octokit,
-  owner: string,
+  clt: reng.BitBucket,
   orgCfg: OrgConfig,
   fileLookup: Record<string, ITreeFile>,
-  repoSHA: string,
 ): Promise<RuleLookup> {
   const ruleFilesToLoad: Record<string, reng.RuleFnSourceLang> = {};
   for (const repoName in orgCfg.repos) {
@@ -263,24 +199,25 @@ async function loadRuleFiles(
         `rules file ${fname} is too large (limit 512kb)`,
       );
     }
+    if (!finfo.url) {
+      throw new Error(
+        `could not get URL for rules file ${fname}`,
+      );
+    }
 
     const ruleLang = ruleFilesToLoad[fname];
 
     // NOTE
-    // Ideally we can asynchronously fetch the contents here, but GitHub API is very strict about parallel calls and
+    // Ideally we can asynchronously fetch the contents here, but BitBucket API is very strict about parallel calls and
     // rate limiting, so we have to resort to a lousy loop here.
-    const contents = await loadFileContents(clt, owner, {
-      filename: fname,
-      gitSHA: finfo.sha,
-      size: finfo.size,
-    });
+    const resp = await clt.directAPICall(finfo.url);
+    const contents = await resp.text();
     const compiledContents = reng.compileRuleFn(contents, ruleLang);
 
     out[fname] = {
       sourceGitHash: finfo.sha,
       compiledRule: compiledContents,
-      fileURL:
-        `https://github.com/${owner}/${fensakCfgRepoName}/blob/${repoSHA}/${fname}`,
+      fileURL: finfo.url,
     };
   }
   return out;

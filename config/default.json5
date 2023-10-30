@@ -9,6 +9,9 @@
   // A user defined identifier for the service environment. This string will be included in every log entry.
   env: "dev",
 
+  // The URL where the app is hosted. Used for constructing self-referencing URLs for the app.
+  appURL: "",
+
   // The maximum size of config files that can be accepted (in bytes).
   configFileSizeLimit: 1024000,
 

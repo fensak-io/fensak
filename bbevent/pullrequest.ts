@@ -1,25 +1,17 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { config, Octokit, reng } from "../deps.ts";
-import type {
-  GitHubPullRequest,
-  GitHubPullRequestEvent,
-  GitHubPullRequestReviewEvent,
-  GitHubUser,
-} from "../deps.ts";
+import { config, reng } from "../deps.ts";
 
-import { fensakCfgRepoName } from "../constants/mod.ts";
 import { logger } from "../logging/mod.ts";
-import { octokitFromInstallation } from "../ghauth/mod.ts";
+import { mustGetBitBucketWorkspaceWithSubscription } from "../svcdata/mod.ts";
+import { loadConfigFromBitBucket } from "../fskconfig/mod.ts";
 import {
+  bitbucketFromWorkspace,
   completeSmartReviewCheck,
-  getDefaultHeadSHA,
+  getPermissionTable,
   initializeSmartReviewCheck,
-  reportNoSubscriptionToUser,
-} from "../ghstd/mod.ts";
-import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
-import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
+} from "../bbstd/mod.ts";
 import {
   AuthorType,
   getRequiredApprovalsForAuthor,
@@ -30,100 +22,50 @@ import type { CompiledRuleSource } from "../svcdata/mod.ts";
 const enforceSubscriptionPlan = config.get(
   "activeSubscriptionPlanRequired",
 );
-const permissionsWithWriteAccess = [
-  "admin",
-  "write",
-];
 
 /**
  * Route the specific pull request sub event to the relevant core business logic to process it.
- * Note that we only process synchronize, opened, and review events. The idea is that Fensak only needs to reevaluate
- * the rules when the code changes, or when there is a change in approval.
  *
  * @return A boolean indicating whether the operation needs to be retried.
  */
 export async function onPullRequest(
   requestID: string,
-  payload: GitHubPullRequestEvent | GitHubPullRequestReviewEvent,
+  // deno-lint-ignore no-explicit-any
+  payload: any,
 ): Promise<boolean> {
-  // IMPORTANT
-  // If a new case condition is added here, you must update allowedInstallationEvents in handler.ts!
-  switch (payload.action) {
-    default:
-      logger.debug(
-        `[${requestID}] Discarding github pull request event ${payload.action}`,
-      );
-      return false;
-
-    // Pull request events
-    case "opened":
-    case "synchronize":
-      /* falls through */
-
-    // Review events
-    case "submitted":
-    case "edited":
-    case "dismissed":
-      // Validations to make sure this event requires processing.
-      if (!payload.organization) {
-        logger.warn(
-          `[${requestID}] No organization set for pull request event. Discarding.`,
-        );
-        return false;
-      }
-
-      return await runReviewRoutine(
-        requestID,
-        payload.organization.login,
-        payload.repository.name,
-        payload.pull_request as GitHubPullRequest,
-      );
-  }
-}
-
-/**
- * Handler function for the pull request opened and synchronize events.
- * This routine implements the core review logic for the PR, ensuring that it either:
- * - Passes the auto approval rule function.
- * - Has the required number of approvals.
- *
- * @return A boolean indicating whether the operation needs to be retried.
- */
-async function runReviewRoutine(
-  requestID: string,
-  owner: string,
-  repoName: string,
-  pullRequest: GitHubPullRequest,
-): Promise<boolean> {
-  const prNum = pullRequest.number;
-  const headSHA = pullRequest.head.sha;
-  const ghorg = await mustGetGitHubOrgWithSubscription(owner);
-  if (!ghorg.installationID) {
+  const wsName = payload.repository.workspace.slug;
+  const repoName = payload.repository.name;
+  const prNum = payload.pullrequest.id;
+  const headSHA = payload.pullrequest.source.commit.hash;
+  const ws = await mustGetBitBucketWorkspaceWithSubscription(wsName);
+  if (!ws.securityContext) {
     // We fail loudly in this case because this is a bug in the system as it doesn't make sense that the installation
     // event wasn't handled by the time we start getting pull requests for an Org.
     throw new Error(
-      `[${requestID}] No active installation on record for org ${owner} when handling pull request action for ${repoName} (Num: ${prNum}).`,
+      `[${requestID}] No active installation on record for BitBucket workspace ${wsName} when handling pull request action for ${repoName} (Num: ${prNum}).`,
     );
   }
-  const octokit = octokitFromInstallation(ghorg.installationID);
+  const clt = bitbucketFromWorkspace(ws);
 
-  if (enforceSubscriptionPlan && !ghorg.subscription) {
+  if (enforceSubscriptionPlan && !ws.subscription) {
     logger.warn(
-      `[${requestID}] Ignoring pull request action for org ${owner} - no active subscription plan on record.`,
+      `[${requestID}] Ignoring pull request action for BitBucket workspace ${wsName} - no active subscription plan on record.`,
     );
-    const cfgHeadSHA = await getDefaultHeadSHA(
-      octokit,
-      ghorg.name,
-      fensakCfgRepoName,
-    );
-    await reportNoSubscriptionToUser(octokit, owner, cfgHeadSHA);
+    //const cfgHeadSHA = await getDefaultHeadSHA(
+    //  clt,
+    //  wsName,
+    //  fensakCfgRepoName,
+    //);
+    //await reportNoSubscriptionToUser(octokit, owner, cfgHeadSHA);
     return false;
   }
 
-  const cfg = await loadConfigFromGitHub(octokit, ghorg);
+  const permissionTable = await getPermissionTable(clt, wsName, repoName);
+
+  const cfg = await loadConfigFromBitBucket(clt, ws);
   if (!cfg) {
     logger.warn(
-      `[${requestID}] Cache miss for Fensak config for ${ghorg.name}, and could not acquire lock for fetching. Retrying later.`,
+      `[${requestID}] Cache miss for Fensak config for BitBucket workspace ${wsName}, and could not acquire lock for fetching. Retrying later.`,
     );
     return true;
   }
@@ -131,7 +73,7 @@ async function runReviewRoutine(
   const repoCfg = cfg.orgConfig.repos[repoName];
   if (!repoCfg) {
     logger.debug(
-      `[${requestID}] No rules configured for repository ${repoName}.`,
+      `[${requestID}] No rules configured for BitBucket repository ${repoName}.`,
     );
     return false;
   }
@@ -158,21 +100,19 @@ async function runReviewRoutine(
     }
   }
 
-  const authorType = await determineAuthorType(
-    octokit,
+  const authorType = determineAuthorType(
     cfg.orgConfig.machineUsers,
-    owner,
-    repoName,
-    pullRequest.user,
+    permissionTable,
+    payload.actor.uuid,
   );
   const [requiredApprovals, msgAnnotation] = getRequiredApprovalsForAuthor(
     repoCfg,
     authorType,
   );
 
-  const checkID = await initializeSmartReviewCheck(
-    octokit,
-    ghorg.name,
+  await initializeSmartReviewCheck(
+    clt,
+    wsName,
     repoName,
     headSHA,
   );
@@ -181,10 +121,11 @@ async function runReviewRoutine(
     [number, string[], string[]]
   > => {
     return await numberApprovalsFromTrustedUsers(
-      octokit,
+      clt,
       cfg.orgConfig.machineUsers,
-      ghorg.name,
+      wsName,
       repoName,
+      permissionTable,
       prNum,
       requiredApprovals,
     );
@@ -194,11 +135,12 @@ async function runReviewRoutine(
     details: string,
   ): Promise<void> => {
     await completeSmartReviewCheck(
-      octokit,
-      ghorg.name,
+      clt,
+      wsName,
       repoName,
-      checkID,
-      "success",
+      prNum,
+      headSHA,
+      "SUCCESSFUL",
       summary,
       details,
     );
@@ -208,21 +150,22 @@ async function runReviewRoutine(
     details: string,
   ): Promise<void> => {
     await completeSmartReviewCheck(
-      octokit,
-      ghorg.name,
+      clt,
+      wsName,
       repoName,
-      checkID,
-      "action_required",
+      prNum,
+      headSHA,
+      "FAILED",
       summary,
       details,
     );
   };
 
   try {
-    const patch = await reng.patchFromGitHubPullRequest(
-      octokit,
+    const patch = await reng.patchFromBitBucketPullRequest(
+      clt,
       {
-        owner: ghorg.name,
+        owner: wsName,
         name: repoName,
       },
       prNum,
@@ -242,12 +185,14 @@ async function runReviewRoutine(
     logger.error(
       `[${requestID}] Error processing rule for pull request: ${err}`,
     );
+
     await completeSmartReviewCheck(
-      octokit,
-      ghorg.name,
+      clt,
+      wsName,
       repoName,
-      checkID,
-      "failure",
+      prNum,
+      headSHA,
+      "FAILED",
       "Internal error",
       "Fensak encountered an internal error and was unable to process this Pull Request. Our team is notified of these errors and will trigger a rebuild automatically or reach out to you if further action is required. In the meantime, you can also try triggering a retry by submitting a review comment.",
     );
@@ -259,22 +204,22 @@ async function runReviewRoutine(
 }
 
 async function numberApprovalsFromTrustedUsers(
-  octokit: Octokit,
+  clt: reng.BitBucket,
   machineUsers: string[],
-  owner: string,
+  wsName: string,
   repo: string,
+  permissionTable: Record<string, "admin" | "write" | "read">,
   prNum: number,
   requiredApprovals: number,
 ): Promise<[number, string[], string[]]> {
-  const { data: reviews } = await octokit.pulls.listReviews({
-    owner,
-    repo,
-    pull_number: prNum,
-  });
+  const resp = await clt.apiCall(
+    `/2.0/repositories/${wsName}/${repo}/pullrequests/${prNum}`,
+  );
+  const pullReq = await resp.json();
 
   const approvals = [];
-  for (const r of reviews) {
-    if (r.state === "APPROVED") {
+  for (const r of pullReq.participants) {
+    if (r.approved && r.user.uuid !== pullReq.author.uuid) {
       approvals.push(r);
     }
   }
@@ -292,12 +237,10 @@ async function numberApprovalsFromTrustedUsers(
       continue;
     }
 
-    const authorType = await determineAuthorType(
-      octokit,
+    const authorType = determineAuthorType(
       machineUsers,
-      owner,
-      repo,
-      a.user as GitHubUser,
+      permissionTable,
+      a.user.uuid,
     );
     switch (authorType) {
       case AuthorType.TrustedUser:
@@ -305,11 +248,11 @@ async function numberApprovalsFromTrustedUsers(
         break;
 
       case AuthorType.MachineUser:
-        machineUserApprovalUsers.push(a.user.login);
+        machineUserApprovalUsers.push(a.user.display_name);
         break;
 
       default:
-        untrustedUserApprovalUsers.push(a.user.login);
+        untrustedUserApprovalUsers.push(a.user.display_name);
         break;
     }
 
@@ -330,28 +273,21 @@ async function numberApprovalsFromTrustedUsers(
   ];
 }
 
-async function determineAuthorType(
-  octokit: Octokit,
+function determineAuthorType(
   machineUsers: string[],
-  owner: string,
-  repo: string,
-  user: GitHubUser,
-): Promise<AuthorType> {
-  if (
-    user.type === "Bot" ||
-    machineUsers.includes(user.login)
-  ) {
+  permissionTable: Record<string, "admin" | "write" | "read">,
+  userUUID: string,
+): AuthorType {
+  if (machineUsers.includes(userUUID)) {
     return AuthorType.MachineUser;
   }
 
-  const { data: p } = await octokit.repos.getCollaboratorPermissionLevel({
-    owner,
-    repo,
-    username: user.login,
-  });
-  if (permissionsWithWriteAccess.includes(p.permission)) {
-    return AuthorType.TrustedUser;
-  }
+  switch (permissionTable[userUUID]) {
+    default:
+      return AuthorType.User;
 
-  return AuthorType.User;
+    case "admin":
+    case "write":
+      return AuthorType.TrustedUser;
+  }
 }

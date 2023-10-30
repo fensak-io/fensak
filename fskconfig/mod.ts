@@ -8,3 +8,4 @@
  */
 export * from "./parser.ts";
 export { loadConfigFromGitHub } from "./loader_github.ts";
+export { loadConfigFromBitBucket } from "./loader_bitbucket.ts";

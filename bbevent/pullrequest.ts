@@ -9,12 +9,13 @@ import { loadConfigFromBitBucket } from "../fskconfig/mod.ts";
 import {
   bitbucketFromWorkspace,
   completeSmartReviewCheck,
+  getPermissionTable,
   initializeSmartReviewCheck,
 } from "../bbstd/mod.ts";
 import {
   AuthorType,
-  formatSmartReviewCheckOutputText,
   getRequiredApprovalsForAuthor,
+  runReview,
 } from "../review/mod.ts";
 import type { CompiledRuleSource } from "../svcdata/mod.ts";
 
@@ -34,7 +35,7 @@ export async function onPullRequest(
 ): Promise<boolean> {
   const wsName = payload.repository.workspace.slug;
   const repoName = payload.repository.name;
-  const prNum = payload.pullrequest.number;
+  const prNum = payload.pullrequest.id;
   const headSHA = payload.pullrequest.source.commit.hash;
   const ws = await mustGetBitBucketWorkspaceWithSubscription(wsName);
   if (!ws.securityContext) {
@@ -58,6 +59,8 @@ export async function onPullRequest(
     //await reportNoSubscriptionToUser(octokit, owner, cfgHeadSHA);
     return false;
   }
+
+  const permissionTable = await getPermissionTable(clt, wsName, repoName);
 
   const cfg = await loadConfigFromBitBucket(clt, ws);
   if (!cfg) {
@@ -97,12 +100,10 @@ export async function onPullRequest(
     }
   }
 
-  const authorType = await determineAuthorType(
-    clt,
+  const authorType = determineAuthorType(
     cfg.orgConfig.machineUsers,
-    wsName,
-    repoName,
-    payload.actor,
+    permissionTable,
+    payload.actor.uuid,
   );
   const [requiredApprovals, msgAnnotation] = getRequiredApprovalsForAuthor(
     repoCfg,
@@ -116,6 +117,50 @@ export async function onPullRequest(
     headSHA,
   );
 
+  const getNumberApprovalsFromTrustedUsers = async (): Promise<
+    [number, string[], string[]]
+  > => {
+    return await numberApprovalsFromTrustedUsers(
+      clt,
+      cfg.orgConfig.machineUsers,
+      wsName,
+      repoName,
+      permissionTable,
+      prNum,
+      requiredApprovals,
+    );
+  };
+  const reportSuccess = async (
+    summary: string,
+    details: string,
+  ): Promise<void> => {
+    await completeSmartReviewCheck(
+      clt,
+      wsName,
+      repoName,
+      prNum,
+      headSHA,
+      "SUCCESSFUL",
+      summary,
+      details,
+    );
+  };
+  const reportFailure = async (
+    summary: string,
+    details: string,
+  ): Promise<void> => {
+    await completeSmartReviewCheck(
+      clt,
+      wsName,
+      repoName,
+      prNum,
+      headSHA,
+      "FAILED",
+      summary,
+      details,
+    );
+  };
+
   try {
     const patch = await reng.patchFromBitBucketPullRequest(
       clt,
@@ -125,183 +170,31 @@ export async function onPullRequest(
       },
       prNum,
     );
-
-    // Check the required rule if specified
-    let requiredLogs: reng.IRuleLogEntry[] = [];
-    if (requiredRuleFn) {
-      const required = await reng.runRule(
-        requiredRuleFn.compiledRule,
-        patch.patchList,
-        patch.metadata,
-        {
-          // TODO: make this configurable by user
-          logMode: reng.RuleLogMode.Capture,
-        },
-      );
-      if (!required.approve) {
-        // TODO: figure out how to report the details
-        const [summary, _details] = formatSmartReviewCheckOutputText(
-          false,
-          `The change set failed the required rule [${repoCfg.requiredRuleFile}](${requiredRuleFn.fileURL}).`,
-          required.logs,
-          [],
-        );
-        await completeSmartReviewCheck(
-          clt,
-          wsName,
-          repoName,
-          headSHA,
-          "FAILED",
-          summary,
-        );
-        return false;
-      }
-
-      // Skip the auto-approval rule and pass the check if no approvals are required, since the result of the
-      // auto-approval rule has no effect.
-      if (requiredApprovals == 0) {
-        // TODO: figure out how to report the details
-        const [summary, _details] = formatSmartReviewCheckOutputText(
-          true,
-          "The change set passed the required rule and no approvals are required.",
-          required.logs,
-          [],
-        );
-        await completeSmartReviewCheck(
-          clt,
-          wsName,
-          repoName,
-          headSHA,
-          "SUCCESSFUL",
-          summary,
-        );
-        return false;
-      }
-
-      requiredLogs = required.logs;
-    }
-
-    // Check the auto-approve rule
-    let automergeLogs: reng.IRuleLogEntry[] = [];
-    if (ruleFn) {
-      const automerge = await reng.runRule(
-        ruleFn.compiledRule,
-        patch.patchList,
-        patch.metadata,
-        {
-          // TODO: make this configurable by user
-          logMode: reng.RuleLogMode.Capture,
-        },
-      );
-      if (automerge.approve) {
-        // TODO: figure out how to report the details
-        const [summary, _details] = formatSmartReviewCheckOutputText(
-          automerge.approve,
-          `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}).`,
-          requiredLogs,
-          automerge.logs,
-        );
-        await completeSmartReviewCheck(
-          clt,
-          wsName,
-          repoName,
-          headSHA,
-          "SUCCESSFUL",
-          summary,
-        );
-        return false;
-      }
-      automergeLogs = automerge.logs;
-    }
-
-    // Failed auto-approval check, so fall back to checking for required approvals.
-    const [numApprovals, machineUserApprovalUsers, untrustedUserApprovalUsers] =
-      await numberApprovalsFromTrustedUsers(
-        clt,
-        cfg.orgConfig.machineUsers,
-        wsName,
-        repoName,
-        prNum,
-        requiredApprovals,
-      );
-    if (numApprovals >= requiredApprovals) {
-      // TODO: figure out how to report the details
-      const [summary, _details] = formatSmartReviewCheckOutputText(
-        true,
-        `The change set has the required number of approvals (at least ${requiredApprovals}).${msgAnnotation}`,
-        requiredLogs,
-        automergeLogs,
-      );
-      await completeSmartReviewCheck(
-        clt,
-        wsName,
-        repoName,
-        headSHA,
-        "SUCCESSFUL",
-        summary,
-      );
-      return false;
-    }
-
-    // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
-    const reasonLines = [];
-    if (ruleFn) {
-      reasonLines.push(
-        `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
-      );
-    } else {
-      reasonLines.push(
-        `The change set does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
-      );
-    }
-    if (untrustedUserApprovalUsers.length > 0) {
-      reasonLines.push("");
-      reasonLines.push(
-        "The following users approved the PR, but do not have write access to the repository:",
-      );
-      for (const u of untrustedUserApprovalUsers) {
-        reasonLines.push(`- \`${u}\``);
-      }
-    }
-    if (machineUserApprovalUsers.length > 0) {
-      reasonLines.push("");
-      reasonLines.push(
-        "The following users approved the PR, but are machine users:",
-      );
-      for (const u of machineUserApprovalUsers) {
-        reasonLines.push(`- \`${u}\``);
-      }
-    }
-    const reason = reasonLines.join("\n");
-    // TODO: figure out how to report the details
-    const [summary, _details] = formatSmartReviewCheckOutputText(
-      false,
-      reason,
-      requiredLogs,
-      automergeLogs,
-    );
-    await completeSmartReviewCheck(
-      clt,
-      wsName,
-      repoName,
-      headSHA,
-      "FAILED",
-      summary,
+    await runReview(
+      repoCfg,
+      patch,
+      ruleFn,
+      requiredRuleFn,
+      requiredApprovals,
+      msgAnnotation,
+      getNumberApprovalsFromTrustedUsers,
+      reportSuccess,
+      reportFailure,
     );
   } catch (err) {
     logger.error(
       `[${requestID}] Error processing rule for pull request: ${err}`,
     );
 
-    // TODO: figure out how to report the details.
-    // "Fensak encountered an internal error and was unable to process this Pull Request. Our team is notified of these errors and will trigger a rebuild automatically or reach out to you if further action is required. In the meantime, you can also try triggering a retry by submitting a review comment.",
     await completeSmartReviewCheck(
       clt,
       wsName,
       repoName,
+      prNum,
       headSHA,
       "FAILED",
       "Internal error",
+      "Fensak encountered an internal error and was unable to process this Pull Request. Our team is notified of these errors and will trigger a rebuild automatically or reach out to you if further action is required. In the meantime, you can also try triggering a retry by submitting a review comment.",
     );
 
     throw err;
@@ -315,6 +208,7 @@ async function numberApprovalsFromTrustedUsers(
   machineUsers: string[],
   wsName: string,
   repo: string,
+  permissionTable: Record<string, "admin" | "write" | "read">,
   prNum: number,
   requiredApprovals: number,
 ): Promise<[number, string[], string[]]> {
@@ -325,7 +219,7 @@ async function numberApprovalsFromTrustedUsers(
 
   const approvals = [];
   for (const r of pullReq.participants) {
-    if (r.approved) {
+    if (r.approved && r.user.uuid !== pullReq.author.uuid) {
       approvals.push(r);
     }
   }
@@ -343,12 +237,10 @@ async function numberApprovalsFromTrustedUsers(
       continue;
     }
 
-    const authorType = await determineAuthorType(
-      clt,
+    const authorType = determineAuthorType(
       machineUsers,
-      wsName,
-      repo,
-      a.user,
+      permissionTable,
+      a.user.uuid,
     );
     switch (authorType) {
       case AuthorType.TrustedUser:
@@ -356,11 +248,11 @@ async function numberApprovalsFromTrustedUsers(
         break;
 
       case AuthorType.MachineUser:
-        machineUserApprovalUsers.push(a.user.login);
+        machineUserApprovalUsers.push(a.user.display_name);
         break;
 
       default:
-        untrustedUserApprovalUsers.push(a.user.login);
+        untrustedUserApprovalUsers.push(a.user.display_name);
         break;
     }
 
@@ -381,23 +273,16 @@ async function numberApprovalsFromTrustedUsers(
   ];
 }
 
-async function determineAuthorType(
-  clt: reng.BitBucket,
+function determineAuthorType(
   machineUsers: string[],
-  wsName: string,
-  repo: string,
-  // deno-lint-ignore no-explicit-any
-  user: any,
-): Promise<AuthorType> {
-  if (machineUsers.includes(user.uuid)) {
+  permissionTable: Record<string, "admin" | "write" | "read">,
+  userUUID: string,
+): AuthorType {
+  if (machineUsers.includes(userUUID)) {
     return AuthorType.MachineUser;
   }
 
-  const resp = await clt.apiCall(
-    `/2.0/repositories/${wsName}/${repo}/permissions-config/users/${user.uuid}`,
-  );
-  const data = await resp.json();
-  switch (data.permission) {
+  switch (permissionTable[userUUID]) {
     default:
       return AuthorType.User;
 

@@ -71,3 +71,22 @@ export async function getListOfFiles(
   }
   return out;
 }
+
+/**
+ * Returns the permission lookup table that maps users to their respective permissions in the given repo.
+ */
+export async function getPermissionTable(
+  clt: reng.BitBucket,
+  wsName: string,
+  repoName: string,
+): Promise<Record<string, "admin" | "write" | "read">> {
+  const out: Record<string, "admin" | "write" | "read"> = {};
+  const resp = await clt.apiCall(
+    `/2.0/workspaces/${wsName}/permissions/repositories/${repoName}`,
+  );
+  const data = await resp.json();
+  for (const v of data.values) {
+    out[v.user.uuid] = v.permission as "admin" | "write" | "read";
+  }
+  return out;
+}

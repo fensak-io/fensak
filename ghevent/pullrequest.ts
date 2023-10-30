@@ -22,8 +22,8 @@ import { loadConfigFromGitHub } from "../fskconfig/mod.ts";
 import { mustGetGitHubOrgWithSubscription } from "../svcdata/mod.ts";
 import {
   AuthorType,
-  formatSmartReviewCheckOutputText,
   getRequiredApprovalsForAuthor,
+  runReview,
 } from "../review/mod.ts";
 import type { CompiledRuleSource } from "../svcdata/mod.ts";
 
@@ -177,6 +177,47 @@ async function runReviewRoutine(
     headSHA,
   );
 
+  const getNumberApprovalsFromTrustedUsers = async (): Promise<
+    [number, string[], string[]]
+  > => {
+    return await numberApprovalsFromTrustedUsers(
+      octokit,
+      cfg.orgConfig.machineUsers,
+      ghorg.name,
+      repoName,
+      prNum,
+      requiredApprovals,
+    );
+  };
+  const reportSuccess = async (
+    summary: string,
+    details: string,
+  ): Promise<void> => {
+    await completeSmartReviewCheck(
+      octokit,
+      ghorg.name,
+      repoName,
+      checkID,
+      "success",
+      summary,
+      details,
+    );
+  };
+  const reportFailure = async (
+    summary: string,
+    details: string,
+  ): Promise<void> => {
+    await completeSmartReviewCheck(
+      octokit,
+      ghorg.name,
+      repoName,
+      checkID,
+      "action_required",
+      summary,
+      details,
+    );
+  };
+
   try {
     const patch = await reng.patchFromGitHubPullRequest(
       octokit,
@@ -186,168 +227,16 @@ async function runReviewRoutine(
       },
       prNum,
     );
-
-    // Check the required rule if specified
-    let requiredLogs: reng.IRuleLogEntry[] = [];
-    if (requiredRuleFn) {
-      const required = await reng.runRule(
-        requiredRuleFn.compiledRule,
-        patch.patchList,
-        patch.metadata,
-        {
-          // TODO: make this configurable by user
-          logMode: reng.RuleLogMode.Capture,
-        },
-      );
-      if (!required.approve) {
-        const [summary, details] = formatSmartReviewCheckOutputText(
-          false,
-          `The change set failed the required rule [${repoCfg.requiredRuleFile}](${requiredRuleFn.fileURL}).`,
-          required.logs,
-          [],
-        );
-        await completeSmartReviewCheck(
-          octokit,
-          ghorg.name,
-          repoName,
-          checkID,
-          "action_required",
-          summary,
-          details,
-        );
-        return false;
-      }
-
-      // Skip the auto-approval rule and pass the check if no approvals are required, since the result of the
-      // auto-approval rule has no effect.
-      if (requiredApprovals == 0) {
-        const [summary, details] = formatSmartReviewCheckOutputText(
-          true,
-          "The change set passed the required rule and no approvals are required.",
-          required.logs,
-          [],
-        );
-        await completeSmartReviewCheck(
-          octokit,
-          ghorg.name,
-          repoName,
-          checkID,
-          "success",
-          summary,
-          details,
-        );
-        return false;
-      }
-
-      requiredLogs = required.logs;
-    }
-
-    // Check the auto-approve rule
-    let automergeLogs: reng.IRuleLogEntry[] = [];
-    if (ruleFn) {
-      const automerge = await reng.runRule(
-        ruleFn.compiledRule,
-        patch.patchList,
-        patch.metadata,
-        {
-          // TODO: make this configurable by user
-          logMode: reng.RuleLogMode.Capture,
-        },
-      );
-      if (automerge.approve) {
-        const [summary, details] = formatSmartReviewCheckOutputText(
-          automerge.approve,
-          `The change set passed the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}).`,
-          requiredLogs,
-          automerge.logs,
-        );
-        await completeSmartReviewCheck(
-          octokit,
-          ghorg.name,
-          repoName,
-          checkID,
-          "success",
-          summary,
-          details,
-        );
-        return false;
-      }
-      automergeLogs = automerge.logs;
-    }
-
-    // Failed auto-approval check, so fall back to checking for required approvals.
-    const [numApprovals, machineUserApprovalUsers, untrustedUserApprovalUsers] =
-      await numberApprovalsFromTrustedUsers(
-        octokit,
-        cfg.orgConfig.machineUsers,
-        ghorg.name,
-        repoName,
-        prNum,
-        requiredApprovals,
-      );
-    if (numApprovals >= requiredApprovals) {
-      const [summary, details] = formatSmartReviewCheckOutputText(
-        true,
-        `The change set has the required number of approvals (at least ${requiredApprovals}).${msgAnnotation}`,
-        requiredLogs,
-        automergeLogs,
-      );
-      await completeSmartReviewCheck(
-        octokit,
-        ghorg.name,
-        repoName,
-        checkID,
-        "success",
-        summary,
-        details,
-      );
-      return false;
-    }
-
-    // At this point, the PR didn't pass the auto-approve rule nor does it have enough approvals, so reject it.
-    const reasonLines = [];
-    if (ruleFn) {
-      reasonLines.push(
-        `The change set did not pass the auto-approval rule [${repoCfg.ruleFile}](${ruleFn.fileURL}) and it does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
-      );
-    } else {
-      reasonLines.push(
-        `The change set does not have the required number of approvals (${numApprovals} < ${requiredApprovals}).${msgAnnotation}`,
-      );
-    }
-    if (untrustedUserApprovalUsers.length > 0) {
-      reasonLines.push("");
-      reasonLines.push(
-        "The following users approved the PR, but do not have write access to the repository:",
-      );
-      for (const u of untrustedUserApprovalUsers) {
-        reasonLines.push(`- \`${u}\``);
-      }
-    }
-    if (machineUserApprovalUsers.length > 0) {
-      reasonLines.push("");
-      reasonLines.push(
-        "The following users approved the PR, but are machine users:",
-      );
-      for (const u of machineUserApprovalUsers) {
-        reasonLines.push(`- \`${u}\``);
-      }
-    }
-    const reason = reasonLines.join("\n");
-    const [summary, details] = formatSmartReviewCheckOutputText(
-      false,
-      reason,
-      requiredLogs,
-      automergeLogs,
-    );
-    await completeSmartReviewCheck(
-      octokit,
-      ghorg.name,
-      repoName,
-      checkID,
-      "action_required",
-      summary,
-      details,
+    await runReview(
+      repoCfg,
+      patch,
+      ruleFn,
+      requiredRuleFn,
+      requiredApprovals,
+      msgAnnotation,
+      getNumberApprovalsFromTrustedUsers,
+      reportSuccess,
+      reportFailure,
     );
   } catch (err) {
     logger.error(

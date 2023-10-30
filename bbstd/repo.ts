@@ -1,13 +1,13 @@
 // Copyright (c) Fensak, LLC.
 // SPDX-License-Identifier: AGPL-3.0-or-later OR BUSL-1.1
 
-import { BitBucket } from "./client.ts";
+import { reng } from "../deps.ts";
 
 /**
  * Returns the default branch of the given repo.
  */
 export async function getDefaultBranch(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   owner: string,
   repoName: string,
 ): Promise<string> {
@@ -20,7 +20,7 @@ export async function getDefaultBranch(
  * Returns the git head commit SHA of the default branch of the given repo.
  */
 export async function getDefaultHeadSHA(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   owner: string,
   repoName: string,
 ): Promise<string> {
@@ -32,7 +32,7 @@ export async function getDefaultHeadSHA(
  * Returns the git head commit SHA of the given branch.
  */
 export async function getHeadSHA(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   owner: string,
   repoName: string,
   branchName: string,
@@ -48,7 +48,7 @@ export async function getHeadSHA(
  * Returns the list of files in the repo by performing a list op on the root directory of the repository.
  */
 export async function getListOfFiles(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   owner: string,
   repoName: string,
   sha: string,

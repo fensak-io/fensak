@@ -75,4 +75,4 @@ import _Ajv from "npm:ajv@^8.12.0";
 const Ajv = _Ajv as unknown as typeof _Ajv.default;
 export { Ajv };
 
-export * as reng from "npm:@fensak-io/reng@2.0.0";
+export * as reng from "npm:@fensak-io/reng@2.0.1";

@@ -48,9 +48,6 @@ export interface BitBucketEventPayload {
   eventName: string;
 
   // deno-lint-ignore no-explicit-any
-  verifiedClaims: any;
-
-  // deno-lint-ignore no-explicit-any
   payload: any;
 }
 

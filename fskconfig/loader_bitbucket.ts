@@ -5,7 +5,7 @@ import { config, reng } from "../deps.ts";
 
 import { logger } from "../logging/mod.ts";
 import { fensakCfgRepoName } from "../constants/mod.ts";
-import { BitBucket, getDefaultHeadSHA, getListOfFiles } from "../bbstd/mod.ts";
+import { getDefaultHeadSHA, getListOfFiles } from "../bbstd/mod.ts";
 import type {
   BitBucketWorkspaceWithSubscription,
   ComputedFensakConfig,
@@ -40,7 +40,7 @@ const rulesFileSizeLimit = config.get("rulesFileSizeLimit");
  * @return The computed Fensak config for the BitBucket Workspace. Returns null if another thread is fetching the config.
  */
 export async function loadConfigFromBitBucket(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   ws: BitBucketWorkspaceWithSubscription,
 ): Promise<ComputedFensakConfig | null> {
   const headSHA = await getDefaultHeadSHA(clt, ws.name, fensakCfgRepoName);
@@ -84,7 +84,7 @@ export async function loadConfigFromBitBucket(
 }
 
 export async function fetchAndParseConfigFromDotFensak(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   ws: BitBucketWorkspaceWithSubscription,
   headSHA: string,
 ): Promise<ComputedFensakConfig> {
@@ -138,7 +138,7 @@ export async function fetchAndParseConfigFromDotFensak(
  * Create a lookup table that maps file paths in a repository tree to the file metadata.
  */
 async function getFileLookup(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   owner: string,
   sha: string,
 ): Promise<Record<string, ITreeFile>> {
@@ -159,7 +159,7 @@ async function getFileLookup(
  * Load the referenced rule files in the org config from the `.fensak` repository so that they can be cached.
  */
 async function loadRuleFiles(
-  clt: BitBucket,
+  clt: reng.BitBucket,
   orgCfg: OrgConfig,
   fileLookup: Record<string, ITreeFile>,
 ): Promise<RuleLookup> {

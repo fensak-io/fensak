@@ -9,7 +9,6 @@ import {
 } from "../test_deps.ts";
 import { reng } from "../deps.ts";
 
-import { BitBucket } from "../bbstd/mod.ts";
 import type {
   BitBucketWorkspaceWithSubscription,
   Subscription,
@@ -17,7 +16,7 @@ import type {
 
 import { fetchAndParseConfigFromDotFensak } from "./loader_bitbucket.ts";
 
-const clt = new BitBucket();
+const clt = new reng.BitBucket();
 const expectedHeadSHA = "cd3721eddd345280f24979b34bd1ab1457b5a75d";
 
 Deno.test("BitBucket fetchAndParseConfigFromDotFensak for fensak-test example repo", async () => {

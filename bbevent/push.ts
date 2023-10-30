@@ -5,7 +5,7 @@ import { config } from "../deps.ts";
 
 import { fensakCfgRepoName } from "../constants/mod.ts";
 import { logger } from "../logging/mod.ts";
-import { BitBucket, getDefaultBranch } from "../bbstd/mod.ts";
+import { bitbucketFromWorkspace, getDefaultBranch } from "../bbstd/mod.ts";
 //import { reportNoSubscriptionToUser } from "../ghstd/mod.ts";
 import { loadConfigFromBitBucket } from "../fskconfig/mod.ts";
 import { mustGetBitBucketWorkspaceWithSubscription } from "../svcdata/mod.ts";
@@ -46,7 +46,7 @@ export async function onPush(
     );
   }
 
-  const clt = BitBucket.fromWorkspace(ws);
+  const clt = bitbucketFromWorkspace(ws);
   const defaultBranch = await getDefaultBranch(clt, wsName, repoName);
 
   // deno-lint-ignore no-explicit-any

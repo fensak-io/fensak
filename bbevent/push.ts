@@ -24,14 +24,12 @@ const enforceSubscriptionPlan = config.get(
 export async function onPush(
   requestID: string,
   // deno-lint-ignore no-explicit-any
-  _verifiedClaims: any,
-  // deno-lint-ignore no-explicit-any
   payload: any,
 ): Promise<boolean> {
   const repoName = payload.repository.name;
   if (repoName != fensakCfgRepoName) {
     logger.debug(
-      `[${requestID}] Push event is not for '.fensak' repository (was for ${repoName}). Discarding.`,
+      `[${requestID}] BitBucket push event is not for '.fensak' repository (was for ${repoName}). Discarding.`,
     );
     return false;
   }
@@ -59,7 +57,7 @@ export async function onPush(
   }
   if (defaultBranchUpdate === null) {
     logger.debug(
-      `[${requestID}] Push event is not for default branch of '.fensak' repository. Discarding.`,
+      `[${requestID}] BitBucket push event is not for default branch of '.fensak' repository. Discarding.`,
     );
     return false;
   }

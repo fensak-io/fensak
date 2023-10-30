@@ -111,8 +111,6 @@ async function handleBitBucketWebhooks(ctx: Context): Promise<void> {
       requestID: bbEventID,
       eventName: bbEventName,
       payload: data,
-      // comes from assertBitBucketWebhook middleware
-      verifiedClaims: ctx.state.bitbucket.verifiedClaims,
     },
   });
 
@@ -155,8 +153,6 @@ async function handleBitBucketAppInstallation(ctx: Context): Promise<void> {
       requestID: eventID,
       eventName: payload.eventType,
       payload: payload,
-      // comes from assertBitBucketWebhook middleware
-      verifiedClaims: ctx.state.bitbucket?.verifiedClaims,
     },
   });
 

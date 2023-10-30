@@ -67,6 +67,8 @@ export function atlassianConnectJSON(ctx: Context): void {
     scopes: [
       // Needed to read the repo contents for creating the patch data for the rules.
       "repository",
+      // Needed to read the member permissions for the repository.
+      "repository:admin",
       // Needed to read the pull request metadata for creating the patch data for the rules.
       "pullrequest",
       // Needed to add self to webhooks on the repositories being watched.

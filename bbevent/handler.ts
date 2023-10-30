@@ -7,6 +7,7 @@ import type { BitBucketEventPayload } from "../svcdata/mod.ts";
 
 import { appInstalled, appUninstalled } from "./installation.ts";
 import { onPush } from "./push.ts";
+import { onPullRequest } from "./pullrequest.ts";
 
 /**
  * Handles the given BitBucket event.
@@ -35,7 +36,15 @@ export async function handleBitBucketEvent(
       break;
 
     case "repo:push":
-      retry = await onPush(msg.requestID, msg.verifiedClaims, msg.payload);
+      retry = await onPush(msg.requestID, msg.payload);
+      break;
+
+    case "pullrequest:approved":
+    case "pullrequest:unapproved":
+    case "pullrequest:rejected":
+    case "pullrequest:changes_request_created":
+    case "pullrequest:created":
+      retry = await onPullRequest(msg.requestID, msg.payload);
       break;
   }
 

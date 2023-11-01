@@ -127,7 +127,8 @@ export async function releaseLock(lock: Lock): Promise<void> {
 }
 
 /**
- * Stores the subscription into the KV store. This will also create or update the record for the GitHub Organization.
+ * Stores the subscription into the KV store. This will also create or update the record for the GitHub Organization or
+ * BitBucket Workspace, depending on the marked org source.
  * @returns Whether the record was successfully stored.
  */
 export async function storeSubscription(
@@ -145,22 +146,44 @@ export async function storeSubscription(
     staged = mainKV.atomic().set(key, subscription);
   }
 
-  // TODO
-  // Handle bitbucket
+  switch (subscription.mainOrgSource) {
+    case "bitbucket": {
+      const wsKey = [TableNames.BitBucketWorkspace, subscription.mainOrgName];
+      const existingWS = await getBitBucketWorkspace(subscription.mainOrgName);
+      staged = staged.check(existingWS);
+      if (existingWS.value) {
+        const ws = { ...existingWS.value };
+        ws.subscriptionID = subscription.id;
+        staged = staged.set(wsKey, ws);
+      } else {
+        const newWS: BitBucketWorkspace = {
+          name: subscription.mainOrgName,
+          subscriptionID: subscription.id,
+          securityContext: null,
+        };
+        staged = staged.set(wsKey, newWS);
+      }
+      break;
+    }
 
-  const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
-  const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
-  staged = staged.check(existingOrg);
-  if (existingOrg.value) {
-    const org = { ...existingOrg.value };
-    org.subscriptionID = subscription.id;
-    staged = staged.set(orgKey, org);
-  } else {
-    staged = staged.set(orgKey, {
-      name: subscription.mainOrgName,
-      installationID: null,
-      subscriptionID: subscription.id,
-    });
+    case "github": {
+      const orgKey = [TableNames.GitHubOrg, subscription.mainOrgName];
+      const existingOrg = await getGitHubOrgRecord(subscription.mainOrgName);
+      staged = staged.check(existingOrg);
+      if (existingOrg.value) {
+        const org = { ...existingOrg.value };
+        org.subscriptionID = subscription.id;
+        staged = staged.set(orgKey, org);
+      } else {
+        const newOrg: GitHubOrg = {
+          name: subscription.mainOrgName,
+          subscriptionID: subscription.id,
+          installationID: null,
+        };
+        staged = staged.set(orgKey, newOrg);
+      }
+      break;
+    }
   }
 
   const { ok } = await staged.commit();

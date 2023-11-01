@@ -14,31 +14,40 @@ import type { RouteParams, RouterContext } from "../deps.ts";
 
 import * as middlewares from "../middlewares/mod.ts";
 import {
+  filterAllowedBitBucketWorkspacesForAuthenticatedUser,
   filterAllowedGitHubOrgsForAuthenticatedUser,
+  getWorkspacePermissionLookup,
   handleSubscriptionEvent,
 } from "../mgmt/mod.ts";
+import type { Account } from "../mgmt/mod.ts";
 import {
   enqueueMsg,
   FensakConfigSource,
   getComputedFensakConfig,
   getSubscription,
   MessageType,
+  mustGetBitBucketWorkspaceWithSubscription,
   mustGetGitHubOrgWithSubscription,
   waitForHealthCheckResult,
 } from "../svcdata/mod.ts";
-import type { GitHubOrgWithSubscription } from "../svcdata/mod.ts";
+import type {
+  BitBucketWorkspaceWithSubscription,
+  GitHubOrgWithSubscription,
+} from "../svcdata/mod.ts";
 import { isOrgManager } from "../ghstd/mod.ts";
 
-interface APIOrganization {
+interface APIAccount {
+  source: "github" | "bitbucket";
   slug: string;
   app_is_installed: boolean;
   dotfensak_ready: boolean;
   subscription: APISubscription | null;
-  is_main_org: boolean;
+  is_main_account: boolean;
 }
 interface APISubscription {
   id: string;
-  main_org_name: string;
+  main_account_source: "github" | "bitbucket";
+  main_account_name: string;
   plan_name: string;
   cancelled_at: number;
 }
@@ -56,19 +65,19 @@ export function attachMgmtAPIRoutes(router: Router): void {
       middlewares.assertMgmtEvent,
       handleMgmtEvent,
     )
-    .options("/api/v1/organizations", corsMW)
+    .options("/api/v1/accounts", corsMW)
     .get(
-      "/api/v1/organizations",
+      "/api/v1/accounts",
       corsMW,
       middlewares.assertMgmtAPIToken,
-      handleGetOrganizations,
+      handleGetAccounts,
     )
-    .options("/api/v1/organizations/:orgid", corsMW)
+    .options("/api/v1/accounts/:acctid", corsMW)
     .get(
-      "/api/v1/organizations/:orgid",
+      "/api/v1/accounts/:acctid",
       corsMW,
       middlewares.assertMgmtAPIToken,
-      handleGetOneOrganization,
+      handleGetOneAccount,
     );
 }
 
@@ -101,40 +110,62 @@ function testSentry(_ctx: Context): void {
   throw new Error("Test error to ensure sentry is working");
 }
 
-async function handleGetOrganizations(ctx: Context): Promise<void> {
+async function handleGetAccounts(ctx: Context): Promise<void> {
   const token = ctx.state.apiToken;
-  const octokit = new Octokit({ auth: token });
   const slugs = ctx.request.url.searchParams.getAll("slugs");
-  const allowedOrgs = await filterAllowedGitHubOrgsForAuthenticatedUser(
-    octokit,
-    slugs,
-  );
+  let allowedAccounts: Account[];
+  switch (ctx.state.apiTokenSource) {
+    default:
+      throw new Error(
+        `Unknown mgmt api token source ${ctx.state.apiTokenSource}`,
+      );
+
+    case middlewares.APITokenSource.GitHub: {
+      const octokit = new Octokit({ auth: token });
+      allowedAccounts = await filterAllowedGitHubOrgsForAuthenticatedUser(
+        octokit,
+        slugs,
+      );
+      break;
+    }
+
+    case middlewares.APITokenSource.BitBucket: {
+      allowedAccounts =
+        await filterAllowedBitBucketWorkspacesForAuthenticatedUser(
+          token,
+          slugs,
+        );
+    }
+  }
 
   // Marshal the allowed orgs list for the API. This primarily handles pulling in the subscription object.
-  const outData: APIOrganization[] = [];
-  for (const o of allowedOrgs) {
+  const outData: APIAccount[] = [];
+  for (const ows of allowedAccounts) {
     let subscription: APISubscription | null = null;
-    let isMainOrg = false;
-    if (o.subscription_id) {
-      const maybeSubscription = await getSubscription(o.subscription_id);
+    let isMainAccount = false;
+    if (ows.subscription_id) {
+      const maybeSubscription = await getSubscription(ows.subscription_id);
       if (maybeSubscription.value) {
         subscription = {
           id: maybeSubscription.value.id,
-          main_org_name: maybeSubscription.value.mainOrgName,
+          main_account_source: maybeSubscription.value.mainOrgSource ||
+            ows.source,
+          main_account_name: maybeSubscription.value.mainOrgName,
           plan_name: maybeSubscription.value.planName,
           cancelled_at: maybeSubscription.value.cancelledAt,
         };
-        if (subscription.main_org_name == o.slug) {
-          isMainOrg = true;
+        if (subscription.main_account_name == ows.slug) {
+          isMainAccount = true;
         }
       }
     }
     outData.push({
-      slug: o.slug,
-      app_is_installed: o.app_is_installed,
-      dotfensak_ready: o.dotfensak_ready,
+      source: ows.source,
+      slug: ows.slug,
+      app_is_installed: ows.app_is_installed,
+      dotfensak_ready: ows.dotfensak_ready,
       subscription: subscription,
-      is_main_org: isMainOrg,
+      is_main_account: isMainAccount,
     });
   }
 
@@ -142,51 +173,109 @@ async function handleGetOrganizations(ctx: Context): Promise<void> {
   ctx.response.body = { data: outData };
 }
 
-async function handleGetOneOrganization(
+async function handleGetOneAccount(
   // deno-lint-ignore no-explicit-any
   ctx: RouterContext<string, RouteParams<string>, any>,
 ): Promise<void> {
-  let ghorg: GitHubOrgWithSubscription;
-  try {
-    ghorg = await mustGetGitHubOrgWithSubscription(ctx.params.orgid);
-  } catch (_e) {
-    ctx.response.status = Status.NotFound;
-    return;
-  }
-
   const token = ctx.state.apiToken;
-  const octokit = new Octokit({ auth: token });
-  const isAllowed = await isOrgManager(octokit, ghorg.name);
-  if (!isAllowed) {
-    ctx.response.status = Status.NotFound;
-    return;
-  }
+  switch (ctx.state.apiTokenSource) {
+    default:
+      throw new Error(
+        `Unknown mgmt api token source ${ctx.state.apiTokenSource}`,
+      );
 
-  const maybeCfg = await getComputedFensakConfig(
-    FensakConfigSource.GitHub,
-    ghorg.name,
-  );
+    case middlewares.APITokenSource.GitHub: {
+      let ghorg: GitHubOrgWithSubscription;
+      try {
+        ghorg = await mustGetGitHubOrgWithSubscription(ctx.params.acctid);
+      } catch (_e) {
+        ctx.response.status = Status.NotFound;
+        return;
+      }
 
-  let apis: APISubscription | null = null;
-  let isMainOrg = false;
-  if (ghorg.subscription) {
-    apis = {
-      id: ghorg.subscription.id,
-      main_org_name: ghorg.subscription.mainOrgName,
-      plan_name: ghorg.subscription.planName,
-      cancelled_at: ghorg.subscription.cancelledAt,
-    };
-    isMainOrg = ghorg.name == ghorg.subscription.mainOrgName;
+      const octokit = new Octokit({ auth: token });
+      const isAllowed = await isOrgManager(octokit, ghorg.name);
+      if (!isAllowed) {
+        ctx.response.status = Status.NotFound;
+        return;
+      }
+
+      const maybeCfg = await getComputedFensakConfig(
+        FensakConfigSource.GitHub,
+        ghorg.name,
+      );
+
+      let apis: APISubscription | null = null;
+      let isMainAccount = false;
+      if (ghorg.subscription) {
+        apis = {
+          id: ghorg.subscription.id,
+          main_account_source: "github",
+          main_account_name: ghorg.subscription.mainOrgName,
+          plan_name: ghorg.subscription.planName,
+          cancelled_at: ghorg.subscription.cancelledAt,
+        };
+        isMainAccount = ghorg.name == ghorg.subscription.mainOrgName;
+      }
+      const apia: APIAccount = {
+        source: "github",
+        slug: ghorg.name,
+        app_is_installed: ghorg.installationID != null,
+        dotfensak_ready: maybeCfg != null,
+        subscription: apis,
+        is_main_account: isMainAccount,
+      };
+      ctx.response.status = Status.OK;
+      ctx.response.body = { data: apia };
+      break;
+    }
+
+    case middlewares.APITokenSource.BitBucket: {
+      let ws: BitBucketWorkspaceWithSubscription;
+      try {
+        ws = await mustGetBitBucketWorkspaceWithSubscription(ctx.params.acctid);
+      } catch (_e) {
+        ctx.response.status = Status.NotFound;
+        return;
+      }
+
+      const wsl = await getWorkspacePermissionLookup(token);
+      const perm = wsl[ws.name];
+      if (perm !== "owner") {
+        ctx.response.status = Status.NotFound;
+        return;
+      }
+
+      const maybeCfg = await getComputedFensakConfig(
+        FensakConfigSource.BitBucket,
+        ws.name,
+      );
+
+      let apis: APISubscription | null = null;
+      let isMainAccount = false;
+      if (ws.subscription) {
+        apis = {
+          id: ws.subscription.id,
+          main_account_source: "bitbucket",
+          main_account_name: ws.subscription.mainOrgName,
+          plan_name: ws.subscription.planName,
+          cancelled_at: ws.subscription.cancelledAt,
+        };
+        isMainAccount = ws.name == ws.subscription.mainOrgName;
+      }
+      const apia: APIAccount = {
+        source: "bitbucket",
+        slug: ws.name,
+        app_is_installed: ws.securityContext != null,
+        dotfensak_ready: maybeCfg != null,
+        subscription: apis,
+        is_main_account: isMainAccount,
+      };
+      ctx.response.status = Status.OK;
+      ctx.response.body = { data: apia };
+      break;
+    }
   }
-  const apio: APIOrganization = {
-    slug: ghorg.name,
-    app_is_installed: ghorg.installationID != null,
-    dotfensak_ready: maybeCfg != null,
-    subscription: apis,
-    is_main_org: isMainOrg,
-  };
-  ctx.response.status = Status.OK;
-  ctx.response.body = { data: apio };
 }
 
 async function handleMgmtEvent(ctx: Context): Promise<void> {

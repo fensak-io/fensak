@@ -8,5 +8,5 @@
  * - Subscription Event hooks
  */
 export * from "./events.ts";
-export * from "./organization.ts";
+export * from "./accounts.ts";
 export * from "./subscription_events.ts";

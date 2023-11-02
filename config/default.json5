@@ -123,12 +123,4 @@
     // the GitHub app configurations are used).
     apiToken: "",
   },
-
-  /**
-   * Settings/Secrets related to interacting with BitBucket.
-   */
-  bitbucket: {
-    // The OAuth consumer ID to link to the BitBucket Add-on.
-    oauthConsumerID: "",
-  }
 }

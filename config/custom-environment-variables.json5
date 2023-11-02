@@ -5,6 +5,7 @@
 {
   env: "FENSAK_ENV",
   appURL: "FENSAK_APP_URL",
+  dashboardAppURL: "FENSAK_DASHBOARD_APP_URL",
   configFileSizeLimit: {
     __name: "FENSAK_CONFIG_FILE_SIZE_LIMIT",
     __format: "number",
@@ -21,8 +22,8 @@
     __name: "FENSAK_PLAN_REPO_LIMITS",
     __format: "json",
   },
-  plansAllowedMultipleOrgs: {
-    __name: "FENSAK_PLANS_ALLOWED_MULTIPLE_ORGS",
+  plansAllowedMultipleAccounts: {
+    __name: "FENSAK_PLANS_ALLOWED_MULTIPLE_ACCOUNTS",
     __format: "json",
   },
   managementAPI: {
@@ -31,6 +32,10 @@
       __format: "boolean",
     },
     eventSecretKey: "FENSAK_MANAGEMENT_API_EVENT_SECRET_KEY",
+    sharedCryptoEncryptionKeys: {
+      __name: "FENSAK_MANAGEMENT_API_SHARED_CRYPTO_ENCRYPTION_KEYS",
+      __format: "json",
+    },
     allowedCORSOrigins: {
       __name: "FENSAK_MANAGEMENT_API_ALLOWED_CORS_ORIGINS",
       __format: "json",

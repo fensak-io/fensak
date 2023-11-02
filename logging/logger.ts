@@ -43,10 +43,12 @@ export function logConfig(): void {
     logger.info(`\t- ${key}: ${repoLimits[key]}`);
   }
 
-  const plansAllowedMultipleOrgs = config.get("plansAllowedMultipleOrgs");
-  if (plansAllowedMultipleOrgs.length > 0) {
-    logger.info("plansAllowedMultipleOrgs:");
-    for (const plan of plansAllowedMultipleOrgs) {
+  const plansAllowedMultipleAccounts = config.get(
+    "plansAllowedMultipleAccounts",
+  );
+  if (plansAllowedMultipleAccounts.length > 0) {
+    logger.info("plansAllowedMultipleAccounts:");
+    for (const plan of plansAllowedMultipleAccounts) {
       logger.info(`\t- ${plan}`);
     }
   } else {

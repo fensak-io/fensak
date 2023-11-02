@@ -5,15 +5,17 @@ import { config } from "../deps.ts";
 
 import {
   deleteSubscription,
+  getBitBucketWorkspace,
   getGitHubOrgRecord,
   getSubscription,
+  storeBitBucketWorkspace,
   storeGitHubOrg,
   storeSubscription,
 } from "../svcdata/mod.ts";
-import type { GitHubOrg } from "../svcdata/mod.ts";
+import type { BitBucketWorkspace, GitHubOrg } from "../svcdata/mod.ts";
 import { logger } from "../logging/mod.ts";
 
-const plansAllowedMultipleOrgs = config.get("plansAllowedMultipleOrgs");
+const plansAllowedMultipleAccounts = config.get("plansAllowedMultipleAccounts");
 
 enum EventType {
   SubscriptionCreated = "subscription.created",
@@ -25,14 +27,16 @@ enum EventType {
 
 interface SubscriptionEvent {
   id: string;
-  mainOrgName: string;
+  mainAccountSource: "github" | "bitbucket";
+  mainAccountName: string;
   planName: string;
   cancelledAt: number;
 }
 
 interface SubscriptionLinkUnlinkEvent {
   id: string;
-  orgName: string;
+  accountSource: "github" | "bitbucket";
+  accountName: string;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -79,12 +83,13 @@ async function handleSubscriptionCreatedEvent(
   }
 
   logger.debug(
-    `Received new subscription ${data.id} for org ${data.mainOrgName} with ${data.planName} plan`,
+    `Received new subscription ${data.id} for org ${data.mainAccountName} (${data.mainAccountSource}) with ${data.planName} plan`,
   );
 
   const newSub = {
     id: data.id,
-    mainOrgName: data.mainOrgName,
+    mainOrgSource: data.mainAccountSource,
+    mainOrgName: data.mainAccountName,
     planName: data.planName,
     repoCount: {},
     cancelledAt: 0,
@@ -95,7 +100,7 @@ async function handleSubscriptionCreatedEvent(
   }
 
   logger.info(
-    `Successfully handled new subscription request ${data.id} for org ${data.mainOrgName} with ${data.planName} plan`,
+    `Successfully handled new subscription request ${data.id} for org ${data.mainAccountName} (${data.mainAccountSource}) with ${data.planName} plan`,
   );
 }
 
@@ -111,7 +116,8 @@ async function handleSubscriptionUpdatedEvent(
   }
 
   const sub = { ...maybeSub.value };
-  sub.mainOrgName = data.mainOrgName;
+  sub.mainOrgSource = data.mainAccountSource;
+  sub.mainOrgName = data.mainAccountName;
   sub.planName = data.planName;
   sub.cancelledAt = data.cancelledAt;
   const stored = await storeSubscription(sub, maybeSub);
@@ -120,7 +126,7 @@ async function handleSubscriptionUpdatedEvent(
   }
 
   logger.info(
-    `Successfully handled updated subscription request ${data.id} for org ${data.mainOrgName}`,
+    `Successfully handled updated subscription request ${data.id} for org ${data.mainAccountName} (${data.mainAccountSource})`,
   );
 }
 
@@ -138,7 +144,7 @@ async function handleSubscriptionCancelledEvent(
   await deleteSubscription(data.id);
 
   logger.info(
-    `Successfully handled cancel subscription request ${data.id} for org ${data.mainOrgName}`,
+    `Successfully handled cancel subscription request ${data.id} for org ${data.mainAccountName} (${data.mainAccountSource})`,
   );
 }
 
@@ -152,49 +158,93 @@ async function handleSubscriptionLinkedEvent(
     );
     return;
   }
-  if (!plansAllowedMultipleOrgs.includes(maybeSub.value.planName)) {
+  if (!plansAllowedMultipleAccounts.includes(maybeSub.value.planName)) {
     logger.warn(
-      `Received link subscription event for sub (${data.id}) with plan (${maybeSub.value.planName}) that is not allowed to link multiple subs. Ignoring event.`,
+      `Received link subscription event for sub (${data.id}) with plan (${maybeSub.value.planName}) that is not allowed to link multiple accounts. Ignoring event.`,
     );
     return;
   }
 
-  const orgRecord = await getGitHubOrgRecord(data.orgName);
-  let org: GitHubOrg;
-  if (!orgRecord.value) {
-    // Create a new org
-    org = {
-      name: data.orgName,
-      installationID: null,
-      subscriptionID: maybeSub.value.id,
-    };
-  } else {
-    // Link subscription to the existing Org
-    org = { ...orgRecord.value };
-    if (org.subscriptionID && org.subscriptionID != data.id) {
-      logger.warn(
-        `Received link subscription event for org (${data.orgName}) that already has a subscription ${org.subscriptionID}. Ignoring event.`,
-      );
-      return;
-    } else if (org.subscriptionID && org.subscriptionID === data.id) {
-      logger.warn(
-        `Received link subscription event for org (${data.orgName}) that is already linked to ${data.id}. Ignoring event.`,
-      );
-      return;
+  switch (data.accountSource) {
+    case "bitbucket": {
+      const wsRecord = await getBitBucketWorkspace(data.accountName);
+      let ws: BitBucketWorkspace;
+      if (!wsRecord.value) {
+        // Create a new Workspace
+        ws = {
+          name: data.accountName,
+          subscriptionID: maybeSub.value.id,
+          securityContext: null,
+        };
+      } else {
+        // Link subscription to the existing Workspace
+        ws = { ...wsRecord.value };
+        if (ws.subscriptionID && ws.subscriptionID != data.id) {
+          logger.warn(
+            `Received link subscription event for BitBucket workspace (${data.accountName}) that already has a subscription ${ws.subscriptionID}. Ignoring event.`,
+          );
+          return;
+        } else if (ws.subscriptionID && ws.subscriptionID === data.id) {
+          logger.warn(
+            `Received link subscription event for BitBucket workspace (${data.accountName}) that is already linked to ${data.id}. Ignoring event.`,
+          );
+          return;
+        }
+
+        ws.subscriptionID = data.id;
+      }
+
+      const stored = await storeBitBucketWorkspace(ws, wsRecord);
+      if (!stored) {
+        throw new Error(
+          `Failed to link subscription ${data.id} to BitBucket workspace ${data.accountName}`,
+        );
+      }
+
+      break;
     }
 
-    org.subscriptionID = data.id;
-  }
+    case "github": {
+      const orgRecord = await getGitHubOrgRecord(data.accountName);
+      let org: GitHubOrg;
+      if (!orgRecord.value) {
+        // Create a new org
+        org = {
+          name: data.accountName,
+          installationID: null,
+          subscriptionID: maybeSub.value.id,
+        };
+      } else {
+        // Link subscription to the existing Org
+        org = { ...orgRecord.value };
+        if (org.subscriptionID && org.subscriptionID != data.id) {
+          logger.warn(
+            `Received link subscription event for GitHub org (${data.accountName}) that already has a subscription ${org.subscriptionID}. Ignoring event.`,
+          );
+          return;
+        } else if (org.subscriptionID && org.subscriptionID === data.id) {
+          logger.warn(
+            `Received link subscription event for GitHub org (${data.accountName}) that is already linked to ${data.id}. Ignoring event.`,
+          );
+          return;
+        }
 
-  const stored = await storeGitHubOrg(org, orgRecord);
-  if (!stored) {
-    throw new Error(
-      `Failed to link subscription ${data.id} to org ${data.orgName}`,
-    );
+        org.subscriptionID = data.id;
+      }
+
+      const stored = await storeGitHubOrg(org, orgRecord);
+      if (!stored) {
+        throw new Error(
+          `Failed to link subscription ${data.id} to GitHub org ${data.accountName}`,
+        );
+      }
+
+      break;
+    }
   }
 
   logger.info(
-    `Successfully handled link subscription request ${data.id} for org ${data.orgName}`,
+    `Successfully handled link subscription request ${data.id} for GitHub org ${data.accountName}`,
   );
 }
 
@@ -208,31 +258,66 @@ async function handleSubscriptionUnlinkedEvent(
     );
     return;
   }
-  const orgRecord = await getGitHubOrgRecord(data.orgName);
-  if (!orgRecord.value) {
-    logger.warn(
-      `Received unlink subscription event for a non-existing org (${data.orgName}). Ignoring event.`,
-    );
-    return;
-  }
-  const org = { ...orgRecord.value };
 
-  if (!org.subscriptionID || org.subscriptionID != data.id) {
-    logger.warn(
-      `Received unlink subscription event for org (${data.orgName}) on wrong subscription (${org.subscriptionID} != ${data.id}). Ignoring event.`,
-    );
-    return;
-  }
+  switch (data.accountSource) {
+    case "bitbucket": {
+      const wsRecord = await getBitBucketWorkspace(data.accountName);
+      if (!wsRecord.value) {
+        logger.warn(
+          `Received unlink subscription event for a non-existing BitBucket workspace (${data.accountName}). Ignoring event.`,
+        );
+        return;
+      }
+      const ws: BitBucketWorkspace = { ...wsRecord.value };
 
-  org.subscriptionID = null;
-  const stored = await storeGitHubOrg(org, orgRecord);
-  if (!stored) {
-    throw new Error(
-      `Failed to unlink subscription ${data.id} from org ${data.orgName}`,
-    );
+      if (!ws.subscriptionID || ws.subscriptionID != data.id) {
+        logger.warn(
+          `Received unlink subscription event for BitBucket workspace (${data.accountName}) on wrong subscription (${ws.subscriptionID} != ${data.id}). Ignoring event.`,
+        );
+        return;
+      }
+
+      ws.subscriptionID = null;
+      const stored = await storeBitBucketWorkspace(ws, wsRecord);
+      if (!stored) {
+        throw new Error(
+          `Failed to unlink subscription ${data.id} from BitBucket workspace ${data.accountName}`,
+        );
+      }
+
+      break;
+    }
+
+    case "github": {
+      const orgRecord = await getGitHubOrgRecord(data.accountName);
+      if (!orgRecord.value) {
+        logger.warn(
+          `Received unlink subscription event for a non-existing GitHub org (${data.accountName}). Ignoring event.`,
+        );
+        return;
+      }
+      const org: GitHubOrg = { ...orgRecord.value };
+
+      if (!org.subscriptionID || org.subscriptionID != data.id) {
+        logger.warn(
+          `Received unlink subscription event for GitHub org (${data.accountName}) on wrong subscription (${org.subscriptionID} != ${data.id}). Ignoring event.`,
+        );
+        return;
+      }
+
+      org.subscriptionID = null;
+      const stored = await storeGitHubOrg(org, orgRecord);
+      if (!stored) {
+        throw new Error(
+          `Failed to unlink subscription ${data.id} from GitHub org ${data.accountName}`,
+        );
+      }
+
+      break;
+    }
   }
 
   logger.info(
-    `Successfully handled unlink subscription request ${data.id} for org ${data.orgName}`,
+    `Successfully handled unlink subscription request ${data.id} for org ${data.accountName}`,
   );
 }

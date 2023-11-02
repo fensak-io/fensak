@@ -12,6 +12,10 @@
   // The URL where the app is hosted. Used for constructing self-referencing URLs for the app.
   appURL: "",
 
+  // The URL where the dashboard app is hosted. Used for constructing redirecting URLs for certain workflows
+  // (e.g., post install redirect for BitBucket).
+  dashboardAppURL: "",
+
   // The maximum size of config files that can be accepted (in bytes).
   configFileSizeLimit: 1024000,
 
@@ -28,8 +32,8 @@
     "": 5,
   },
 
-  // A list of subscription plan names that are allowed to link multiple Orgs.
-  plansAllowedMultipleOrgs: [],
+  // A list of subscription plan names that are allowed to link multiple Accounts.
+  plansAllowedMultipleAccounts: [],
 
   /**
    * Settings related to the management API.
@@ -40,6 +44,9 @@
 
     // The secret key for signing webhook events.
     eventSecretKey: "",
+
+    // A set of shared secret keys to use for encrypting secrets that can be decrypted by multiple Fensak services.
+    sharedCryptoEncryptionKeys: [],
 
     // Allowed CORS origins.
     allowedCORSOrigins: [],

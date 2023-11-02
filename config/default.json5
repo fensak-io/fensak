@@ -12,6 +12,10 @@
   // The URL where the app is hosted. Used for constructing self-referencing URLs for the app.
   appURL: "",
 
+  // The URL where the dashboard app is hosted. Used for constructing redirecting URLs for certain workflows
+  // (e.g., post install redirect for BitBucket).
+  dashboardAppURL: "",
+
   // The maximum size of config files that can be accepted (in bytes).
   configFileSizeLimit: 1024000,
 

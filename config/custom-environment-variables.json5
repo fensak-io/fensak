@@ -78,4 +78,7 @@
     },
     apiToken: "FENSAK_GITHUB_TOKEN",
   },
+  bitbucket: {
+    oauthConsumerID: "FENSAK_BITBUCKET_OAUTH_CONSUMER_ID",
+  }
 }

@@ -8,6 +8,7 @@ import { getBitBucketAppKey } from "../bbstd/mod.ts";
 const appEnv = config.get("env");
 const appURL = config.get("appURL");
 const dashboardAppURL = config.get("dashboardAppURL");
+const oauthConsumerID = config.get("bitbucket.oauthConsumerID");
 
 /**
  * The handler function for serving the Atlassian Connect App descriptor.
@@ -79,6 +80,9 @@ export function atlassianConnectJSON(ctx: Context): void {
       postInstallRedirect: {
         key: "postinstallredirect",
         url: dashboardAppURL,
+      },
+      oauthConsumer: {
+        clientId: oauthConsumerID,
       },
     },
   };

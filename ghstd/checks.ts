@@ -52,7 +52,7 @@ export async function completeLoadFensakCfgCheck(
   checkID: number,
   errMsg: string | null,
 ): Promise<void> {
-  let conclusion = "success";
+  let conclusion: "success" | "failure" = "success";
   let output = {
     title: loaderCheckTitle,
     summary: "Successfully loaded Fensak configuration",
